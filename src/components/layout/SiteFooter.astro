@@ -1,6 +1,7 @@
 ---
 import { site } from '../../data/site';
 import { withBase } from '../../utils/url';
+import CopyEmail from '../ui/CopyEmail.astro';
 ---
 
 <footer class="site-footer">
@@ -10,7 +11,7 @@ import { withBase } from '../../utils/url';
       <p class="footer-note">如果某个项目或想法让你感兴趣，欢迎直接来信。</p>
     </div>
     <div class="footer-links">
-      <a href={`mailto:${site.email}`}>{site.email}</a>
+      <CopyEmail label={site.email} successLabel="邮箱已复制" />
       <span><a href={site.social.github} rel="noreferrer" target="_blank">GitHub</a> · <a href={withBase('about/')}>关于</a></span>
       <small>© {new Date().getFullYear()} {site.name}</small>
     </div>
@@ -50,11 +51,6 @@ import { withBase } from '../../utils/url';
     gap: var(--space-2);
     color: var(--color-text-soft);
     font-size: 0.82rem;
-  }
-
-  .footer-links > a {
-    color: var(--color-accent-strong);
-    font-weight: 650;
   }
 
   .footer-links small {

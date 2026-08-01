@@ -1,6 +1,7 @@
 ---
 import { navigation, site } from '../../data/site';
 import { withBase } from '../../utils/url';
+import CopyEmail from '../ui/CopyEmail.astro';
 
 const currentPath = Astro.url.pathname;
 const isActive = (href: string) => {
@@ -36,7 +37,7 @@ const isActive = (href: string) => {
       </ul>
     </nav>
 
-    <a class="header-contact" href={`mailto:${site.email}`}>联系我</a>
+    <CopyEmail label="复制邮箱" variant="header" />
   </div>
 </header>
 
@@ -121,21 +122,6 @@ const isActive = (href: string) => {
     transform: scaleX(1);
   }
 
-  .header-contact {
-    justify-self: end;
-    padding: 0.5rem 0.85rem;
-    border: 1px solid var(--color-border-strong);
-    border-radius: 999px;
-    background: rgba(255, 251, 243, 0.55);
-    font-size: 0.8rem;
-    font-weight: 700;
-  }
-
-  .header-contact:hover {
-    border-color: var(--color-accent);
-    color: var(--color-accent-strong);
-  }
-
   @media (max-width: 760px) {
     .header-inner {
       min-height: auto;
@@ -149,8 +135,7 @@ const isActive = (href: string) => {
       min-width: 0;
     }
 
-    .brand small,
-    .header-contact {
+    .brand small {
       display: none;
     }
 

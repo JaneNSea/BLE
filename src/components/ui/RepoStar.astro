@@ -15,7 +15,7 @@ const { compact = false } = Astro.props;
   rel="noreferrer"
   data-repo-star
   data-api-url={site.repository.api}
-  aria-label={`在 GitHub 查看并 Star ${site.repository.slug}`}
+  aria-label={`访问 GitHub 上的 ${site.repository.slug} 仓库`}
 >
   <span class="star-mark" aria-hidden="true">★</span>
   <span class="repo-copy">
@@ -26,7 +26,7 @@ const { compact = false } = Astro.props;
     <strong data-star-count>—</strong>
     <small>Stars</small>
   </span>
-  <span class="star-action">去 GitHub 点 Star <i>↗</i></span>
+  <span class="star-action">访问 BLE 仓库 <i>↗</i></span>
 </a>
 
 <script>

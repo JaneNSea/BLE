@@ -5,6 +5,7 @@ import ProductCard from '../components/cards/ProductCard.astro';
 import ProjectCard from '../components/cards/ProjectCard.astro';
 import SectionHeading from '../components/ui/SectionHeading.astro';
 import RepoStar from '../components/ui/RepoStar.astro';
+import CopyEmail from '../components/ui/CopyEmail.astro';
 import { site } from '../data/site';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { byDate, byPriority, featured, isPublished } from '../utils/content';
@@ -71,7 +72,7 @@ const areas = [
       <p class="lede">{site.description}</p>
       <div class="button-row">
         <a class="button button--primary" href="#explore">选择你想看的内容</a>
-        <a class="button" href={site.social.github} rel="noreferrer" target="_blank">访问 GitHub ↗</a>
+        <a class="button" href={site.social.github} rel="noreferrer" target="_blank">访问我的 GitHub 主页 ↗</a>
       </div>
     </div>
 
@@ -176,7 +177,7 @@ const areas = [
       <h2>有想讨论的项目、职位或合作方向？</h2>
       <p>给我一封邮件，告诉我你从哪里看到这里，以及你对哪部分内容感兴趣。</p>
     </div>
-    <a class="button button--primary" href={`mailto:${site.email}`}>发送邮件 ↗</a>
+    <CopyEmail label="复制邮箱地址" variant="primary" />
   </section>
 </BaseLayout>
 
@@ -424,7 +425,7 @@ const areas = [
     color: var(--color-text-soft);
   }
 
-  .contact-section > a {
+  .contact-section > :global(.copy-email) {
     flex: none;
   }
 

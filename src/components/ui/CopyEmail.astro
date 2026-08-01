@@ -1,0 +1,103 @@
+---
+import { site } from '../../data/site';
+
+interface Props {
+  label?: string;
+  successLabel?: string;
+  variant?: 'header' | 'primary' | 'plain';
+}
+
+const {
+  label = '复制邮箱地址',
+  successLabel = '邮箱已复制',
+  variant = 'plain',
+} = Astro.props;
+---
+
+<button
+  class:list={[
+    'copy-email',
+    `copy-email--${variant}`,
+    { button: variant === 'primary', 'button--primary': variant === 'primary' },
+  ]}
+  type="button"
+  data-copy-email={site.email}
+  data-success-label={successLabel}
+  aria-label={`复制邮箱地址：${site.email}`}
+  title={site.email}
+>
+  <span data-copy-email-label>{label}</span>
+</button>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('[data-copy-email]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const email = button.dataset.copyEmail;
+      const label = button.querySelector<HTMLElement>('[data-copy-email-label]');
+      if (!email || !label) return;
+
+      const originalLabel = label.textContent ?? '复制邮箱地址';
+
+      try {
+        if (!navigator.clipboard?.writeText) throw new Error('Clipboard API is unavailable');
+        await navigator.clipboard.writeText(email);
+
+        label.textContent = button.dataset.successLabel ?? '邮箱已复制';
+        button.classList.add('is-copied');
+        window.setTimeout(() => {
+          label.textContent = originalLabel;
+          button.classList.remove('is-copied');
+        }, 1800);
+      } catch {
+        window.prompt('浏览器未允许自动复制，请手动复制邮箱地址：', email);
+        label.textContent = email;
+        button.classList.add('is-copied');
+      }
+    });
+  });
+</script>
+
+<style>
+  .copy-email {
+    cursor: pointer;
+    font: inherit;
+  }
+
+  .copy-email--header {
+    justify-self: end;
+    padding: 0.5rem 0.85rem;
+    border: 1px solid var(--color-border-strong);
+    border-radius: 999px;
+    color: var(--color-text);
+    background: rgba(255, 251, 243, 0.55);
+    font-size: 0.8rem;
+    font-weight: 700;
+    transition: border-color var(--transition), color var(--transition), background var(--transition);
+  }
+
+  .copy-email--header:hover,
+  .copy-email--header.is-copied {
+    border-color: var(--color-accent);
+    color: var(--color-accent-strong);
+    background: var(--color-accent-soft);
+  }
+
+  .copy-email--plain {
+    padding: 0;
+    border: 0;
+    color: var(--color-accent-strong);
+    background: transparent;
+    font-weight: 650;
+  }
+
+  .copy-email--plain:hover,
+  .copy-email--plain.is-copied {
+    color: var(--color-text);
+  }
+
+  @media (max-width: 760px) {
+    .copy-email--header {
+      display: none;
+    }
+  }
+</style>
