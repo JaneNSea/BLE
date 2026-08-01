@@ -1,0 +1,100 @@
+<section class="trust-board" aria-labelledby="trust-title">
+  <header>
+    <span>Trusted transaction model</span>
+    <h3 id="trust-title">从任务状态到可审计结算</h3>
+    <p>每次资金变化都必须对应合法状态、有效证据和守恒账务。</p>
+  </header>
+
+  <ol class="state-flow" aria-label="可信交易状态机">
+    <li><small>01</small><strong>CREATED</strong><span>合同快照</span></li>
+    <li><small>02</small><strong>FROZEN</strong><span>额度预冻结</span></li>
+    <li><small>03</small><strong>EXECUTING</strong><span>绑定执行代次</span></li>
+    <li><small>04</small><strong>DELIVERED</strong><span>交付证据清单</span></li>
+    <li><small>05</small><strong>ACCEPTED</strong><span>验收或争议</span></li>
+    <li><small>06</small><strong>SETTLED</strong><span>分账与解冻</span></li>
+  </ol>
+
+  <div class="guard-grid">
+    <article><b>HMAC + Nonce</b><p>签名覆盖方法、路径、请求摘要和时间戳，阻断伪造与重放。</p></article>
+    <article><b>全局幂等号</b><p>冻结、验收和结算重复调用只返回首次结果。</p></article>
+    <article><b>复式记账</b><p>每笔交易所有分录之和为零，权威余额只来自账务数据。</p></article>
+    <article><b>Outbox + 哈希链</b><p>事务内落事件，异步可靠投递；审计流水只追加、可追溯。</p></article>
+  </div>
+
+  <footer>
+    <span>状态守卫</span><i>+</i><span>证据守卫</span><i>+</i><span>金额守恒</span><i>+</i><span>异常补偿</span>
+  </footer>
+</section>
+
+<style>
+  .trust-board {
+    width: min(calc(100vw - 2rem), var(--content-width));
+    margin: var(--space-7) 0 var(--space-8) 50%;
+    padding: clamp(1rem, 3vw, 2rem);
+    border: 1px solid rgba(139, 92, 63, 0.22);
+    border-radius: var(--radius-lg);
+    background: linear-gradient(145deg, rgba(255, 251, 243, 0.9), rgba(236, 218, 187, 0.54));
+    box-shadow: var(--shadow-card);
+    transform: translateX(-50%);
+  }
+
+  header { max-width: 46rem; }
+  header span { color: #9b5f43; font: 750 0.64rem var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; }
+  h3 { margin: var(--space-2) 0 var(--space-2); font-size: clamp(1.6rem, 4vw, 2.4rem); }
+  header p { margin: 0; color: var(--color-text-soft); font-size: 0.85rem; }
+
+  .state-flow {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: var(--space-2);
+    margin: var(--space-6) 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .state-flow li {
+    position: relative;
+    min-width: 0;
+    padding: var(--space-3);
+    border: 1px solid rgba(139, 92, 63, 0.18);
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.64);
+  }
+
+  .state-flow li:not(:last-child)::after {
+    position: absolute;
+    z-index: 2;
+    top: 50%;
+    right: -0.72rem;
+    color: #a96b42;
+    content: '→';
+    transform: translateY(-50%);
+  }
+
+  .state-flow small,
+  .state-flow strong,
+  .state-flow span { display: block; }
+  .state-flow small { color: #a96b42; font-family: var(--font-mono); }
+  .state-flow strong { margin-top: var(--space-2); font-size: 0.72rem; overflow-wrap: anywhere; }
+  .state-flow span { margin-top: var(--space-1); color: var(--color-text-faint); font-size: 0.63rem; }
+
+  .guard-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-3); }
+  .guard-grid article { padding: var(--space-4); border-top: 2px solid #b6794d; background: rgba(255, 250, 241, 0.6); }
+  .guard-grid b { font-family: var(--font-display); font-size: 0.95rem; }
+  .guard-grid p { margin: var(--space-2) 0 0; color: var(--color-text-soft); font-size: 0.7rem; line-height: 1.6; }
+
+  footer { display: flex; justify-content: center; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-5); color: #805237; font-size: 0.72rem; font-weight: 700; }
+  footer i { font-style: normal; opacity: 0.45; }
+
+  @media (max-width: 800px) {
+    .trust-board { width: calc(100vw - 1.25rem); }
+    .state-flow { grid-template-columns: repeat(2, 1fr); }
+    .state-flow li:nth-child(2n)::after { display: none; }
+    .guard-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  @media (max-width: 480px) {
+    .state-flow, .guard-grid { grid-template-columns: 1fr; }
+    .state-flow li::after { display: none; }
+  }
+</style>

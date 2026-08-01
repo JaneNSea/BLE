@@ -1,6 +1,7 @@
 ---
 import type { ProductEntry } from '../../utils/content';
 import { withBase } from '../../utils/url';
+import ProductImageReveal from '../ui/ProductImageReveal.astro';
 import TagList from '../ui/TagList.astro';
 
 interface Props {
@@ -14,12 +15,20 @@ const visibility = {
   'private-demo': '预约演示',
   'public-preview': '公开预览',
 }[entry.data.visibility];
+const status = {
+  concept: 'Concept',
+  building: 'Building',
+  mvp: 'MVP',
+  beta: 'Beta',
+  completed: 'Completed',
+  maintained: 'Maintained',
+}[entry.data.status];
 ---
 
 <article class:list={['product-card content-card', { prominent }]}>
   <div class="product-cover">
     {entry.data.cover ? (
-      <img src={withBase(entry.data.cover)} alt="" loading="lazy" />
+      <ProductImageReveal src={entry.data.cover} alt={`${entry.data.title} 项目封面`} />
     ) : (
       <div class="cover-placeholder">
         <small>Selected product</small>
@@ -32,7 +41,7 @@ const visibility = {
   <div class="product-content">
     <div class="product-meta">
       <span>{visibility}</span>
-      <span>{entry.data.status}</span>
+      <span>{status}</span>
       <span>{entry.data.role}</span>
     </div>
     <h3><a href={withBase(`products/${entry.id}/`)}>{entry.data.title}</a></h3>
@@ -71,12 +80,15 @@ const visibility = {
     background: rgba(224, 201, 158, 0.22);
   }
 
-  .product-cover img,
   .cover-placeholder {
     width: 100%;
     height: 100%;
     border-radius: calc(var(--radius-lg) - 0.5rem);
     object-fit: cover;
+  }
+
+  .product-cover :global(.product-image-reveal) {
+    min-height: 20rem;
   }
 
   .cover-placeholder {
@@ -219,6 +231,10 @@ const visibility = {
     }
 
     .cover-placeholder {
+      min-height: 17rem;
+    }
+
+    .product-cover :global(.product-image-reveal) {
       min-height: 17rem;
     }
 

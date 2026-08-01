@@ -1,0 +1,211 @@
+<section class="tech-board" aria-labelledby="collaboration-title">
+  <header>
+    <div>
+      <span>Multi-agent orchestration</span>
+      <h3 id="collaboration-title">受约束的多 Agent 协作链</h3>
+    </div>
+    <p>中央节点定义规则与责任边界，异构 Agent 负责专业执行，评审节点汇总可验收结果。</p>
+  </header>
+
+  <div class="main-chain" aria-label="多 Agent 协作主流程">
+    <article><small>01</small><strong>任务契约</strong><p>目标 · 预算 · 期限 · 验收标准</p></article>
+    <i>→</i>
+    <article class="accent"><small>02</small><strong>中央编排</strong><p>难度判断 · 招募 · 预算分配</p></article>
+    <i>→</i>
+    <article><small>03</small><strong>异构执行</strong><p>分工 · 协作 · 挑战与返工</p></article>
+    <i>→</i>
+    <article><small>04</small><strong>审核交付</strong><p>互评 · 汇总 · 用户验收</p></article>
+  </div>
+
+  <div class="core-grid">
+    <article class="coordinator">
+      <span>Central coordinator</span>
+      <h4>中央节点只管理契约，不接管所有能力</h4>
+      <ul>
+        <li>请求接入与定向邀请</li>
+        <li>角色、预算与传播深度约束</li>
+        <li>结果聚合与失败迁移</li>
+      </ul>
+    </article>
+
+    <div class="agent-pool">
+      <span>Heterogeneous agent pool</span>
+      <div>
+        <b>推理 Agent</b><b>代码 Agent</b><b>检索 Agent</b><b>测试 Agent</b>
+        <b>安全 Agent</b><b>领域 Agent</b><b>审核 Agent</b><b>多模态 Agent</b>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <span>一个任务一个决策者</span>
+    <span>评委与执行者权限分离</span>
+    <span>传播层级受限</span>
+    <span>预算与责任可追踪</span>
+  </footer>
+</section>
+
+<style>
+  .tech-board {
+    width: min(calc(100vw - 2rem), var(--content-width));
+    margin: var(--space-7) 0 var(--space-8) 50%;
+    padding: clamp(1rem, 3vw, 2rem);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-lg);
+    background: rgba(255, 251, 243, 0.78);
+    box-shadow: var(--shadow-card);
+    transform: translateX(-50%);
+  }
+
+  header {
+    display: grid;
+    grid-template-columns: 1fr minmax(16rem, 0.7fr);
+    gap: var(--space-6);
+    align-items: end;
+    padding-bottom: var(--space-5);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  header span,
+  .core-grid > article > span,
+  .agent-pool > span {
+    color: var(--color-accent-strong);
+    font-family: var(--font-mono);
+    font-size: 0.64rem;
+    font-weight: 750;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  h3 {
+    margin: var(--space-2) 0 0;
+    font-size: clamp(1.6rem, 4vw, 2.4rem);
+  }
+
+  header p {
+    margin: 0;
+    color: var(--color-text-soft);
+    font-size: 0.82rem;
+  }
+
+  .main-chain {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr;
+    gap: var(--space-2);
+    align-items: center;
+    padding-block: var(--space-6);
+  }
+
+  .main-chain article {
+    min-width: 0;
+    padding: var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: #fffaf1;
+  }
+
+  .main-chain article.accent {
+    border-color: rgba(143, 106, 44, 0.38);
+    background: var(--color-accent-soft);
+  }
+
+  .main-chain small {
+    color: var(--color-accent-strong);
+    font-family: var(--font-mono);
+  }
+
+  .main-chain strong,
+  .main-chain p {
+    display: block;
+  }
+
+  .main-chain strong {
+    margin-top: var(--space-2);
+    font-family: var(--font-display);
+  }
+
+  .main-chain p {
+    margin: var(--space-1) 0 0;
+    color: var(--color-text-faint);
+    font-size: 0.68rem;
+  }
+
+  .main-chain i {
+    color: var(--color-accent-strong);
+    font-style: normal;
+  }
+
+  .core-grid {
+    display: grid;
+    grid-template-columns: 0.85fr 1.15fr;
+    gap: var(--space-3);
+  }
+
+  .coordinator,
+  .agent-pool {
+    padding: var(--space-5);
+    border-radius: var(--radius-md);
+  }
+
+  .coordinator {
+    border: 1px solid rgba(58, 87, 112, 0.2);
+    background: rgba(97, 128, 151, 0.08);
+  }
+
+  h4 {
+    margin: var(--space-3) 0;
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+  }
+
+  ul {
+    margin: 0;
+    padding-left: 1rem;
+    color: var(--color-text-soft);
+    font-size: 0.76rem;
+  }
+
+  .agent-pool {
+    border: 1px solid rgba(74, 116, 84, 0.2);
+    background: rgba(111, 145, 103, 0.08);
+  }
+
+  .agent-pool > div {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+  }
+
+  .agent-pool b {
+    padding: 0.7rem 0.4rem;
+    border: 1px solid rgba(74, 116, 84, 0.16);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.52);
+    text-align: center;
+    font-size: 0.68rem;
+  }
+
+  footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+  }
+
+  footer span {
+    padding: 0.35rem 0.65rem;
+    border-radius: 999px;
+    color: var(--color-text-soft);
+    background: var(--color-bg-soft);
+    font-size: 0.66rem;
+  }
+
+  @media (max-width: 760px) {
+    .tech-board { width: calc(100vw - 1.25rem); }
+    header, .core-grid { grid-template-columns: 1fr; }
+    .main-chain { grid-template-columns: 1fr; }
+    .main-chain i { text-align: center; transform: rotate(90deg); }
+    .agent-pool > div { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>

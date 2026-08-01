@@ -3,7 +3,7 @@ import { glob } from 'astro/loaders';
 import { z } from 'astro/zod';
 
 const audience = z.enum(['interviewer', 'investor', 'judge', 'developer']);
-const projectStatus = z.enum(['concept', 'building', 'beta', 'completed', 'maintained']);
+const projectStatus = z.enum(['concept', 'building', 'mvp', 'beta', 'completed', 'maintained']);
 
 const commonShowcaseFields = {
   title: z.string(),

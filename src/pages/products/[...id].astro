@@ -19,6 +19,14 @@ const visibility = {
   'private-demo': 'Private Demo',
   'public-preview': 'Public Preview',
 }[entry.data.visibility];
+const status = {
+  concept: 'Concept',
+  building: 'Building',
+  mvp: 'MVP',
+  beta: 'Beta',
+  completed: 'Completed',
+  maintained: 'Maintained',
+}[entry.data.status];
 ---
 
 <ContentLayout
@@ -30,7 +38,7 @@ const visibility = {
   tags={entry.data.tags}
   backHref="/products/"
   backLabel="返回产品列表"
-  status={`${visibility} · ${entry.data.status} · ${entry.data.role}`}
+  status={`${visibility} · ${status} · ${entry.data.role}`}
 >
   {entry.data.metrics.length > 0 && (
     <dl class="case-metrics">

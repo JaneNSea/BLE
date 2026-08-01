@@ -1,0 +1,46 @@
+<section class="gateway-board" aria-labelledby="gateway-title">
+  <header><div><span>Cangjie gateway · Designed</span><h3 id="gateway-title">全异步非阻塞请求生命周期</h3></div><p>事件循环负责连接，协程负责业务推进，插件责任链负责安全与治理。</p></header>
+
+  <ol class="lifecycle" aria-label="仓颉网关请求生命周期">
+    <li><span>01</span><b>连接接收</b><small>Epoll / Kqueue</small></li>
+    <li><span>02</span><b>协议解码</b><small>HTTP / HTTP2</small></li>
+    <li><span>03</span><b>构建上下文</b><small>Typed Context</small></li>
+    <li><span>04</span><b>插件责任链</b><small>Coroutine</small></li>
+    <li><span>05</span><b>动态路由</b><small>Hot Reload</small></li>
+    <li><span>06</span><b>异步转发</b><small>Non-blocking I/O</small></li>
+    <li><span>07</span><b>响应与观测</b><small>Trace / Metrics</small></li>
+  </ol>
+
+  <div class="plugin-chain">
+    <span>Rate Limit</span><i>→</i><span>JWT Auth</span><i>→</i><span>HMAC</span><i>→</i><span>IP Filter</span><i>→</i><span>Access Log</span><i>→</i><span>Circuit Breaker</span>
+  </div>
+
+  <footer>
+    <article><b>事件驱动内核</b><p>少量线程承载大规模连接，避免一请求一线程。</p></article>
+    <article><b>类型安全上下文</b><p>请求数据和插件状态通过强类型边界传递。</p></article>
+    <article><b>热更新路由</b><p>配置与插件动态生效，不要求业务服务同步发布。</p></article>
+  </footer>
+</section>
+
+<style>
+  .gateway-board { width:min(calc(100vw - 2rem),var(--content-width)); margin:var(--space-7) 0 var(--space-8) 50%; padding:clamp(1rem,3vw,2rem); border:1px solid rgba(84,77,146,.2); border-radius:var(--radius-lg); background:linear-gradient(145deg,rgba(255,251,243,.9),rgba(232,228,245,.5)); box-shadow:var(--shadow-card); transform:translateX(-50%); }
+  header { display:grid; grid-template-columns:1fr minmax(16rem,.7fr); gap:var(--space-6); align-items:end; }
+  header span { color:#64579c; font:750 .64rem var(--font-mono); letter-spacing:.08em; text-transform:uppercase; }
+  h3 { margin:var(--space-2) 0 0; font-size:clamp(1.6rem,4vw,2.4rem); }
+  header p { margin:0; color:var(--color-text-soft); font-size:.8rem; }
+  .lifecycle { display:grid; grid-template-columns:repeat(7,1fr); gap:var(--space-2); margin:var(--space-6) 0; padding:0; list-style:none; }
+  .lifecycle li { min-width:0; padding:var(--space-3); border:1px solid rgba(84,77,146,.15); border-radius:var(--radius-sm); background:rgba(255,255,255,.58); }
+  .lifecycle span,.lifecycle b,.lifecycle small { display:block; }
+  .lifecycle span { color:#685aa0; font-family:var(--font-mono); font-size:.62rem; }
+  .lifecycle b { margin-top:var(--space-2); font-size:.72rem; }
+  .lifecycle small { margin-top:var(--space-1); color:var(--color-text-faint); font-size:.57rem; overflow-wrap:anywhere; }
+  .plugin-chain { display:flex; flex-wrap:wrap; justify-content:center; gap:var(--space-2); align-items:center; padding:var(--space-4); border:1px dashed rgba(84,77,146,.28); border-radius:var(--radius-md); }
+  .plugin-chain span { padding:.45rem .7rem; border-radius:999px; background:rgba(108,91,164,.1); font:700 .65rem var(--font-mono); }
+  .plugin-chain i { color:#7567aa; font-style:normal; }
+  footer { display:grid; grid-template-columns:repeat(3,1fr); gap:var(--space-3); margin-top:var(--space-5); }
+  footer article { padding:var(--space-4); border-top:2px solid #7465a8; background:rgba(255,255,255,.42); }
+  footer b { font-family:var(--font-display); font-size:.9rem; }
+  footer p { margin:var(--space-2) 0 0; color:var(--color-text-soft); font-size:.68rem; }
+  @media(max-width:820px){.gateway-board{width:calc(100vw - 1.25rem)}header{grid-template-columns:1fr}.lifecycle{grid-template-columns:repeat(2,1fr)}footer{grid-template-columns:1fr}}
+  @media(max-width:480px){.lifecycle{grid-template-columns:1fr}.plugin-chain i{display:none}}
+</style>

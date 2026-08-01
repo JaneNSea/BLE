@@ -1,38 +1,43 @@
 ---
 title: "SuperMe"
-summary: "面向人类与智能 Agent 的可信任务交易平台：把需求变成有状态、有预算、有验收标准的任务契约，并组织多 Agent 完成交付。"
-tagline: "让人类发布目标，让 Agent 交付可验收的结果"
+summary: "面向人类与智能 Agent 的服务交易平台，以安全、高效、可协作的履约机制连接供需，并为企业提供依托鸿蒙生态的智能解决方案。"
+tagline: "安全、高效、可协作的 Agent 服务交易平台"
 publishedAt: 2026-08-01
 updatedAt: 2026-08-01
-tags: ["Agent Marketplace", "Multi-Agent", "Trusted Transaction", "HarmonyOS", "System Design"]
+tags: ["Security", "Multi-Agent", "Enterprise", "HarmonyOS", "Agent Marketplace"]
 cover: "/images/products/surperme/surperme-cover.png"
 featured: true
 priority: 120
 draft: false
-status: "building"
+status: "mvp"
 visibility: "closed-source"
 role: "产品设计 · 后端与架构设计"
 audience: ["investor", "interviewer", "judge", "developer"]
 ctaLabel: "查看完整产品案例"
 metrics:
   - label: "当前阶段"
-    value: "Backend MVP"
-  - label: "核心闭环"
-    value: "任务 → 履约 → 结算"
-  - label: "产品定位"
-    value: "Agent 服务交易平台"
+    value: "MVP"
+  - label: "核心价值"
+    value: "安全 · 高效 · 可协作"
+  - label: "生态方向"
+    value: "企业方案 · 鸿蒙生态"
 ---
 
 import CaseCallout from '../../components/content/CaseCallout.astro';
 import CaseGrid from '../../components/content/CaseGrid.astro';
 import CaseImage from '../../components/content/CaseImage.astro';
 import ProcessFlow from '../../components/content/ProcessFlow.astro';
+import ArchitectureMap from '../../components/content/superme/ArchitectureMap.astro';
+import CollaborationMap from '../../components/content/superme/CollaborationMap.astro';
+import EnterpriseSolution from '../../components/content/superme/EnterpriseSolution.astro';
+import GatewayPipeline from '../../components/content/superme/GatewayPipeline.astro';
+import TrustModel from '../../components/content/superme/TrustModel.astro';
 
 <CaseImage
-  src="/images/products/surperme/poster.png"
-  alt="SuperMe 任务平台产品概念海报，展示任务市场、工作台和积分中心"
-  label="Product vision"
-  caption="产品概念视觉：任务市场、Agent 协作、积分激励与企业解决方案。界面仍在持续迭代，不代表最终上线版本。"
+  src="/images/products/surperme/surperme-cover.png"
+  alt="抽象化的 SuperMe Agent 服务协作与可信交付网络"
+  label="SuperMe vision"
+  caption="为案例页重新设计的概念封面：任务经过能力匹配与多 Agent 协作，最终形成可验证交付。"
   eager={true}
 />
 
@@ -68,6 +73,40 @@ SuperMe 的核心判断是：**下一代 Agent 平台不应该只陈列能力或
   text="任务促成收益，履约产生数据，数据反过来优化能力评价、匹配和调度；这是 SuperMe 希望建立的长期闭环。"
 />
 
+## 五项产品价值
+
+SuperMe 的竞争力不来自堆叠更多模型，而来自把 Agent 能力放进真实产品、企业流程和安全边界中。
+
+<CaseGrid
+  items={[
+    {
+      eyebrow: 'Security',
+      title: '安全',
+      text: '身份鉴权、权限隔离、状态机履约、交付证据与可信结算共同降低越权、重放、重复结算和结果篡改风险。',
+    },
+    {
+      eyebrow: 'Efficiency',
+      title: '高效',
+      text: '用能力匹配、任务编排、异步事件和自动审核减少人工协调，让需求更快进入可执行状态。',
+    },
+    {
+      eyebrow: 'Collaboration',
+      title: '可协作',
+      text: '单个任务可以由不同专业 Agent 分工、互评和挑战，并通过统一契约汇总为一个可验收结果。',
+    },
+    {
+      eyebrow: 'Enterprise',
+      title: '企业解决方案',
+      text: '把 Agent 服务嵌入企业已有代码、权限与执行环境，为不同组织设计可隔离、可审核的履约流程。',
+    },
+    {
+      eyebrow: 'HarmonyOS',
+      title: '依托鸿蒙生态',
+      text: '结合实况窗、TaskPool、端侧 AI、毕昇 JDK、EulerOS 与 openGauss，探索端云协同的 Agent 服务入口。',
+    },
+  ]}
+/>
+
 ## 一条状态机贯通完整履约链路
 
 任务不是一段发出后便失效的 Prompt，而是一份包含目标、预算、期限、验收标准与版本信息的契约。平台用显式状态机约束每次转换，避免审核、交付、退款和争议处理在并发环境中彼此污染。
@@ -91,12 +130,7 @@ SuperMe 的核心判断是：**下一代 Agent 平台不应该只陈列能力或
 
 复杂工程任务会进入中央集群节点，由中央 Agent 判断任务难度、招募候选 Agent、组织互评与挑战，再按预算分配子任务。异构边缘 Agent 可以使用不同模型与工具，但必须遵守任务合同、传播深度和角色约束。
 
-<CaseImage
-  src="/images/products/surperme/multi-agent-flow.png"
-  alt="SuperMe 分布式多 Agent 协作流程，展示中央节点、异构 Agent 池、评委互评和预算分配"
-  label="Multi-agent orchestration"
-  caption="多 Agent 协作设计：中央节点负责任务契约、规则和结果汇总，异构 Agent 池负责专业执行。该能力将由独立项目仓库继续实现。"
-/>
+<CollaborationMap />
 
 这里刻意避免让中央节点无限感知或控制全部 Agent：参与者通过明确消息与结果协议协作，决策者、评委、挑战者和能力 Agent 具有不同权限，传播深度也受到限制。这使协同过程更容易复盘，也为故障迁移和恶意输出隔离留下空间。
 
@@ -104,12 +138,7 @@ SuperMe 的核心判断是：**下一代 Agent 平台不应该只陈列能力或
 
 Agent 服务的风险不仅来自支付，还来自重复请求、过期结果、越权调用、交付物被替换以及部分成功。SuperMe 采用类托管结算模型，将额度预冻结、交付验收、分账与退款纳入同一条状态链。
 
-<CaseImage
-  src="/images/products/surperme/trusted-transaction.png"
-  alt="SuperMe 安全与可信交易模型，展示任务状态机、幂等、事务 Outbox、复式记账和哈希链审计"
-  label="Trusted transaction"
-  caption="可信交易设计图：全局幂等号、风险权限隔离、事务 Outbox、复式记账与哈希链共同构成可追溯边界。"
-/>
+<TrustModel />
 
 下面是用于说明设计意图的脱敏伪代码，不是闭源仓库的生产源码：
 
@@ -139,15 +168,15 @@ settle(command) {
 
 ## 架构演进：MVP 控制复杂度，目标架构承接增长
 
-当前 Backend MVP 采用模块化单体：用户、任务、Agent、订单、积分、文件和系统模块由一个 Spring Boot 进程聚合，跨模块只依赖 Facade 接口。这让团队可以先验证产品闭环，不必提前承担完整微服务治理成本。
+当前 MVP 采用模块化单体：用户、任务、Agent、订单、积分、文件和系统模块由一个 Spring Boot 进程聚合，跨模块只依赖 Facade 接口。这让团队可以先验证完整产品闭环，不必提前承担完整微服务治理成本。
 
 <CaseGrid
   columns={2}
   items={[
     {
-      eyebrow: 'Now · Implemented',
-      title: '模块化单体 Backend MVP',
-      text: '核心接口已经贯通任务创建、审核、发布、Agent 接单、执行、提交、验收与积分冻结/转账；正在补齐安全和生产化能力。',
+      eyebrow: 'Now · MVP',
+      title: '模块化单体 MVP',
+      text: '产品已经形成任务发布、Agent 接单、执行提交、审核验收与积分结算的可运行闭环；正在继续补齐安全和生产化能力。',
     },
     {
       eyebrow: 'Next · Designed',
@@ -157,12 +186,7 @@ settle(command) {
   ]}
 />
 
-<CaseImage
-  src="/images/products/surperme/backend-architecture.png"
-  alt="SuperMe 基于 Spring Cloud 和 DDD 的目标微服务架构"
-  label="Target architecture"
-  caption="目标微服务架构设计，用于说明系统从模块化单体向领域自治、故障隔离和弹性扩容演进的边界；图中能力不等同于已经全部上线。"
-/>
+<ArchitectureMap />
 
 开放 Agent 接口计划采用 `Agent ID + API Key + HMAC-SHA256`：签名覆盖方法、路径、请求体摘要、时间戳与 nonce，服务端校验时间窗并通过 Redis `SET NX + TTL` 防重放。密钥只参与本地签名，不在网络中传输。
 
@@ -194,12 +218,7 @@ SuperMe 不把鸿蒙能力当作简单的技术标签，而是把它们放进具
 
 面向企业时，SuperMe 提供的不是通用聊天机器人，而是可插入现有研发流程的任务履约能力。以 OpenHarmony Issue 为例，企业在隔离虚拟机中保留代码仓和执行权，平台负责解析需求、编排云端专家 Agent、审核方案并返回结果。
 
-<CaseImage
-  src="/images/products/surperme/openharmony-solution.png"
-  alt="面向企业侧的 OpenHarmony Issue 解决方案，展示平台编排专家 Agent 并在隔离虚拟机执行验证"
-  label="Enterprise solution"
-  caption="OpenHarmony 场景设计：云端 Agent 负责深度推理与方案生成，企业侧轻量 Agent 只负责审核和隔离执行，降低代码与环境暴露风险。该方案将由独立项目仓库承载。"
-/>
+<EnterpriseSolution />
 
 这一方案把权限边界放在第一位：云端 Agent 不直接接触企业代码仓和生产凭据，虚拟机侧 Agent 仅执行受限操作并返回结构化证据。适合从编译失败、依赖异常、特定模块修改和测试定位等结果可验证的任务切入。
 
@@ -207,12 +226,7 @@ SuperMe 不把鸿蒙能力当作简单的技术标签，而是把它们放进具
 
 随着 Agent 调用从“用户偶尔点击”变成机器间高频请求，网关需要同时处理连接规模、插件扩展、签名鉴权、动态路由与可观测性。SuperMe 设计了一套基于 Cangjie 的全异步非阻塞网关内核，以 Epoll/Kqueue 事件驱动模型结合协程调度承载高并发 I/O。
 
-<CaseImage
-  src="/images/products/surperme/cangjie-gateway.png"
-  alt="SuperMe 基于 Cangjie 的自研网关架构设计，展示事件驱动内核、插件责任链和智能路由"
-  label="Gateway design"
-  caption="仓颉网关当前处于设计阶段：连接接收、协议解码、上下文、插件责任链、路由和响应编码均保持异步边界，后续将逐步迁移进入主项目。"
-/>
+<GatewayPipeline />
 
 责任链把限流、鉴权、签名校验、黑白名单、日志和熔断拆成独立插件；路由表支持热更新，让治理策略不必与业务服务同时发布。这里的价值不是“为了自研而自研”，而是探索更适合 Agent 高频接入与鸿蒙生态的安全网关边界。
 
