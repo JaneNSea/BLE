@@ -1,0 +1,99 @@
+---
+interface Step {
+  title: string;
+  detail: string;
+}
+
+interface Props {
+  steps: Step[];
+  label?: string;
+}
+
+const { steps, label = '工作流' } = Astro.props;
+---
+
+<ol class="process-flow" aria-label={label}>
+  {steps.map((step, index) => (
+    <li>
+      <span>{String(index + 1).padStart(2, '0')}</span>
+      <h3>{step.title}</h3>
+      <p>{step.detail}</p>
+    </li>
+  ))}
+</ol>
+
+<style>
+  .process-flow {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-3);
+    width: min(calc(100vw - 2rem), var(--content-width));
+    margin: var(--space-6) 0 var(--space-7) 50%;
+    padding: 0;
+    list-style: none;
+    transform: translateX(-50%);
+  }
+
+  li {
+    position: relative;
+    min-width: 0;
+    padding: var(--space-4);
+    border-top: 2px solid var(--color-accent);
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+    background: rgba(255, 251, 243, 0.58);
+  }
+
+  li:not(:last-child)::after {
+    position: absolute;
+    z-index: 1;
+    top: 1.1rem;
+    right: -0.65rem;
+    color: var(--color-accent-strong);
+    content: '→';
+    font-weight: 800;
+  }
+
+  li:nth-child(4n)::after {
+    display: none;
+  }
+
+  span {
+    color: var(--color-accent-strong);
+    font-family: var(--font-mono);
+    font-size: 0.64rem;
+    font-weight: 750;
+  }
+
+  h3 {
+    margin: var(--space-3) 0 var(--space-2);
+    font-size: 1.05rem;
+  }
+
+  p {
+    margin: 0;
+    color: var(--color-text-soft);
+    font-size: 0.76rem;
+    line-height: 1.6;
+  }
+
+  @media (max-width: 840px) {
+    .process-flow {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    li:nth-child(2n)::after {
+      display: none;
+    }
+  }
+
+  @media (max-width: 520px) {
+    .process-flow {
+      width: calc(100vw - 1.25rem);
+      grid-template-columns: 1fr;
+    }
+
+    li::after {
+      display: none;
+    }
+  }
+</style>

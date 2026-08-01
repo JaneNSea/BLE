@@ -1,0 +1,101 @@
+---
+import { withBase } from '../../utils/url';
+
+interface Props {
+  src: string;
+  alt: string;
+  caption: string;
+  label?: string;
+  wide?: boolean;
+  eager?: boolean;
+}
+
+const { src, alt, caption, label = '项目图示', wide = true, eager = false } = Astro.props;
+const imageUrl = withBase(src);
+---
+
+<figure class:list={['case-figure', { wide }]}>
+  <a href={imageUrl} target="_blank" rel="noreferrer" aria-label={`查看${label}原图`}>
+    <img src={imageUrl} alt={alt} loading={eager ? 'eager' : 'lazy'} decoding="async" />
+  </a>
+  <figcaption>
+    <span>{label}</span>
+    <p>{caption}</p>
+    <a href={imageUrl} target="_blank" rel="noreferrer">查看原图 ↗</a>
+  </figcaption>
+</figure>
+
+<style>
+  .case-figure {
+    margin-block: var(--space-7);
+  }
+
+  .case-figure.wide {
+    width: min(calc(100vw - 2rem), var(--content-width));
+    margin-left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .case-figure > a {
+    display: block;
+    overflow: hidden;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-md);
+    background: #fff;
+    box-shadow: var(--shadow-card);
+  }
+
+  img {
+    display: block;
+    width: 100%;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    transition: transform 260ms ease;
+  }
+
+  .case-figure > a:hover img {
+    transform: scale(1.006);
+  }
+
+  figcaption {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: var(--space-3);
+    align-items: start;
+    margin-top: var(--space-3);
+    color: var(--color-text-faint);
+    font-size: 0.75rem;
+  }
+
+  figcaption span {
+    color: var(--color-accent-strong);
+    font-family: var(--font-mono);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  figcaption p {
+    margin: 0;
+  }
+
+  figcaption a {
+    white-space: nowrap;
+  }
+
+  @media (max-width: 620px) {
+    .case-figure.wide {
+      width: calc(100vw - 1.25rem);
+    }
+
+    figcaption {
+      grid-template-columns: 1fr auto;
+    }
+
+    figcaption p {
+      grid-column: 1 / -1;
+      grid-row: 2;
+    }
+  }
+</style>

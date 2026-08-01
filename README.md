@@ -51,6 +51,17 @@ npm run new:product -- product-codename
 
 脚本只生成内容文件。路由、列表、首页精选和类型校验由 Astro Content Collections 自动处理。
 
+复杂商业案例建议使用 MDX，并将图片放在
+`public/images/products/<slug>/`。项目提供四个可复用展示组件：
+
+- `CaseImage.astro`：展示可放大的宽幅产品图或架构图，并附带说明。
+- `CaseGrid.astro`：展示价值、决策、阶段或商业模式等结构化信息。
+- `ProcessFlow.astro`：展示履约链路、数据飞轮等步骤流程。
+- `CaseCallout.astro`：突出产品命题、核心判断或长期愿景。
+
+可参考 `src/content/products/superme.mdx`。技术图需要在正文和图注中明确区分
+“已实现”“正在完善”和“规划设计”，避免把目标架构写成已上线能力。
+
 ## GitHub Pages
 
 工作流位于 `.github/workflows/deploy-pages.yml`。如果仓库名是
