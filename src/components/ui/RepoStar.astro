@@ -1,0 +1,184 @@
+---
+import { site } from '../../data/site';
+
+interface Props {
+  compact?: boolean;
+}
+
+const { compact = false } = Astro.props;
+---
+
+<a
+  class:list={['repo-star', { compact }]}
+  href={site.repository.url}
+  target="_blank"
+  rel="noreferrer"
+  data-repo-star
+  data-api-url={site.repository.api}
+  aria-label={`在 GitHub 查看并 Star ${site.repository.slug}`}
+>
+  <span class="star-mark" aria-hidden="true">★</span>
+  <span class="repo-copy">
+    <small>Open-source website</small>
+    <strong>{site.repository.slug}</strong>
+  </span>
+  <span class="star-count" aria-live="polite">
+    <strong data-star-count>—</strong>
+    <small>Stars</small>
+  </span>
+  <span class="star-action">去 GitHub 点 Star <i>↗</i></span>
+</a>
+
+<script>
+  const cacheKey = 'janensea-ble-star-count';
+  const cacheDuration = 10 * 60 * 1000;
+
+  const formatCount = (count: number) =>
+    new Intl.NumberFormat('zh-CN', { notation: count >= 1000 ? 'compact' : 'standard' }).format(count);
+
+  document.querySelectorAll<HTMLElement>('[data-repo-star]').forEach(async (element) => {
+    const output = element.querySelector<HTMLElement>('[data-star-count]');
+    const apiUrl = element.dataset.apiUrl;
+    if (!output || !apiUrl) return;
+
+    try {
+      const cached = JSON.parse(localStorage.getItem(cacheKey) ?? 'null');
+      if (cached && Date.now() - cached.savedAt < cacheDuration) {
+        output.textContent = formatCount(cached.count);
+        return;
+      }
+    } catch {
+      // Storage may be disabled; the live request below still works.
+    }
+
+    try {
+      const response = await fetch(apiUrl, {
+        headers: { Accept: 'application/vnd.github+json' },
+      });
+      if (!response.ok) throw new Error(`GitHub API responded with ${response.status}`);
+
+      const repository = await response.json();
+      const count = Number(repository.stargazers_count);
+      if (!Number.isFinite(count)) throw new Error('GitHub API returned an invalid star count');
+
+      output.textContent = formatCount(count);
+      try {
+        localStorage.setItem(cacheKey, JSON.stringify({ count, savedAt: Date.now() }));
+      } catch {
+        // The visible value is already updated, so storage failure is harmless.
+      }
+    } catch {
+      output.textContent = '—';
+    }
+  });
+</script>
+
+<style>
+  .repo-star {
+    position: relative;
+    display: grid;
+    min-width: 0;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: var(--space-3);
+    align-items: center;
+    margin-top: var(--space-5);
+    padding: 0.9rem 1rem;
+    border: 1px solid rgba(111, 78, 25, 0.22);
+    border-radius: var(--radius-md);
+    color: #4d3918;
+    background:
+      radial-gradient(circle at 88% 0%, rgba(255, 255, 255, 0.45), transparent 7rem),
+      linear-gradient(145deg, #e5be66, #d2a344);
+    box-shadow: 0 12px 30px rgba(127, 87, 24, 0.14);
+    transition: box-shadow var(--transition), transform var(--transition);
+  }
+
+  .repo-star:hover {
+    box-shadow: 0 16px 38px rgba(127, 87, 24, 0.2);
+    transform: translateY(-2px);
+  }
+
+  .star-mark {
+    display: grid;
+    width: 2.6rem;
+    height: 2.6rem;
+    place-items: center;
+    border: 1px solid rgba(77, 57, 24, 0.24);
+    border-radius: 50%;
+    background: rgba(255, 250, 235, 0.38);
+    font-size: 1.1rem;
+  }
+
+  .repo-copy,
+  .star-count {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    line-height: 1.25;
+  }
+
+  .repo-copy small,
+  .star-count small {
+    font-size: 0.58rem;
+    font-weight: 750;
+    letter-spacing: 0.08em;
+    opacity: 0.68;
+    text-transform: uppercase;
+  }
+
+  .repo-copy strong {
+    margin-top: 0.14rem;
+    overflow-wrap: anywhere;
+    font-size: 0.74rem;
+  }
+
+  .star-count {
+    min-width: 3.4rem;
+    align-items: flex-end;
+    padding-left: var(--space-3);
+    border-left: 1px solid rgba(77, 57, 24, 0.2);
+  }
+
+  .star-count strong {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+  }
+
+  .star-action {
+    grid-column: 2 / -1;
+    font-size: 0.68rem;
+    font-weight: 750;
+  }
+
+  .star-action i {
+    font-style: normal;
+    transition: transform var(--transition);
+  }
+
+  .repo-star:hover .star-action i {
+    display: inline-block;
+    transform: translate(2px, -2px);
+  }
+
+  .repo-star.compact {
+    margin-top: 0;
+  }
+
+  @media (max-width: 420px) {
+    .repo-star {
+      grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .star-count {
+      grid-column: 2;
+      align-items: flex-start;
+      padding: var(--space-2) 0 0;
+      border-top: 1px solid rgba(77, 57, 24, 0.2);
+      border-left: 0;
+    }
+
+    .star-action {
+      grid-column: 2;
+    }
+  }
+</style>

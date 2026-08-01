@@ -12,6 +12,11 @@ export const site = {
   social: {
     github: 'https://github.com/JaneNSea',
   },
+  repository: {
+    slug: 'JaneNSea/BLE',
+    url: 'https://github.com/JaneNSea/BLE',
+    api: 'https://api.github.com/repos/JaneNSea/BLE',
+  },
   capabilities: ['系统设计', '全栈开发', '嵌入式 / IoT', '产品思维', '独立交付'],
 } as const;
 
@@ -20,5 +25,6 @@ export const navigation = [
   { label: '产品', href: '/products/' },
   { label: '项目', href: '/projects/' },
   { label: '技术笔记', href: '/notes/' },
+  { label: '留言', href: '/comments/' },
   { label: '关于', href: '/about/' },
 ] as const;

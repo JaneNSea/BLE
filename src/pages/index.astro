@@ -4,6 +4,7 @@ import NoteRow from '../components/cards/NoteRow.astro';
 import ProductCard from '../components/cards/ProductCard.astro';
 import ProjectCard from '../components/cards/ProjectCard.astro';
 import SectionHeading from '../components/ui/SectionHeading.astro';
+import RepoStar from '../components/ui/RepoStar.astro';
 import { site } from '../data/site';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { byDate, byPriority, featured, isPublished } from '../utils/content';
@@ -84,6 +85,7 @@ const areas = [
       <ul>
         {site.capabilities.slice(0, 4).map((capability) => <li>{capability}</li>)}
       </ul>
+      <RepoStar />
     </aside>
   </section>
 
@@ -451,7 +453,8 @@ const areas = [
     }
 
     .profile-status,
-    .profile-card ul {
+    .profile-card ul,
+    .profile-card :global([data-repo-star]) {
       grid-column: 1 / -1;
     }
 

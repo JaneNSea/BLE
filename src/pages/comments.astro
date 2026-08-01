@@ -1,0 +1,344 @@
+---
+import RepoStar from '../components/ui/RepoStar.astro';
+import { site } from '../data/site';
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout
+  title="留言板 — JaneNSea"
+  description="使用 GitHub Issues 保存的公开留言板。"
+>
+  <header class="comments-hero shell">
+    <p class="eyebrow">Guestbook / GitHub Issues</p>
+    <h1 class="page-title">留下一句话，<br />或者开始一场讨论。</h1>
+    <p class="lede">这里的留言公开保存在 GitHub Issues 中。你可以评论网站、讨论技术问题，也可以告诉我你正在做什么。</p>
+  </header>
+
+  <section class="board shell" aria-label="GitHub Issues 留言板">
+    <div class="board-screw screw-one" aria-hidden="true"></div>
+    <div class="board-screw screw-two" aria-hidden="true"></div>
+    <div class="board-screw screw-three" aria-hidden="true"></div>
+    <div class="board-screw screw-four" aria-hidden="true"></div>
+
+    <aside class="instruction-card object-card">
+      <span class="object-index">01 / BOARD GUIDE</span>
+      <h2>留言说明</h2>
+      <p class="mode">CURIOUS & RESPECTFUL</p>
+      <ol>
+        <li><span>01</span><p>使用 GitHub 账号登录后发表评论。</p></li>
+        <li><span>02</span><p>留言将公开同步到本站仓库的 Issue。</p></li>
+        <li><span>03</span><p>请勿留下隐私、密钥或其他敏感信息。</p></li>
+      </ol>
+      <a href={`${site.repository.url}/issues`} target="_blank" rel="noreferrer">直接查看 Issues ↗</a>
+      <RepoStar compact />
+    </aside>
+
+    <section class="comment-file" aria-labelledby="comment-title">
+      <div class="binder-ring ring-left" aria-hidden="true"></div>
+      <div class="binder-ring ring-right" aria-hidden="true"></div>
+      <div class="file-heading">
+        <div>
+          <span>02</span>
+          <h2 id="comment-title">留言与讨论</h2>
+          <p>COMMENTS / MESSAGES / IDEAS</p>
+        </div>
+        <span class="file-state">PUBLIC</span>
+      </div>
+
+      <div class="comment-note">
+        <strong>写下你的想法</strong>
+        <p>首次评论时，GitHub 会请求授权 Utterances 代表你创建评论。评论数据始终保存在 GitHub Issues。</p>
+      </div>
+
+      <div class="utterances-wrap">
+        <Fragment
+          set:html={`<script src="https://utteranc.es/client.js" repo="JaneNSea/BLE" issue-term="pathname" theme="github-light" crossorigin="anonymous" async><\/script>`}
+        />
+        <p class="comment-fallback">
+          评论框没有显示？请先安装 Utterances，或
+          <a href={`${site.repository.url}/issues`} target="_blank" rel="noreferrer">直接前往 GitHub Issues ↗</a>
+        </p>
+      </div>
+    </section>
+  </section>
+</BaseLayout>
+
+<style>
+  .comments-hero {
+    padding-block: var(--space-8) var(--space-7);
+  }
+
+  .board {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(15rem, 0.56fr) minmax(0, 1.44fr);
+    gap: clamp(1.5rem, 5vw, 4.5rem);
+    align-items: start;
+    margin-bottom: var(--space-9);
+    padding: clamp(1.2rem, 4vw, 3.2rem);
+    border: 1px solid rgba(91, 70, 41, 0.3);
+    border-radius: 2rem;
+    background-color: #eadcc7;
+    background-image: radial-gradient(circle, rgba(70, 53, 34, 0.72) 2.2px, transparent 2.6px);
+    background-position: 4px 4px;
+    background-size: 38px 38px;
+    box-shadow:
+      inset 0 0 0 7px rgba(255, 251, 244, 0.45),
+      inset 0 0 35px rgba(95, 67, 30, 0.13),
+      0 24px 70px rgba(85, 62, 30, 0.12);
+  }
+
+  .board-screw {
+    position: absolute;
+    z-index: 3;
+    width: 0.65rem;
+    height: 0.65rem;
+    border: 1px solid #7b6b57;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #fff, #9b8a72 55%, #5c5042);
+    box-shadow: 0 1px 3px rgba(60, 45, 27, 0.35);
+  }
+
+  .screw-one { top: 1rem; left: 1rem; }
+  .screw-two { top: 1rem; right: 1rem; }
+  .screw-three { right: 1rem; bottom: 1rem; }
+  .screw-four { bottom: 1rem; left: 1rem; }
+
+  .object-card,
+  .comment-file {
+    position: relative;
+    z-index: 1;
+  }
+
+  .instruction-card {
+    padding: var(--space-5);
+    border: 1px solid rgba(81, 65, 45, 0.26);
+    border-radius: var(--radius-md);
+    background: rgba(255, 252, 245, 0.9);
+    box-shadow:
+      0 16px 35px rgba(77, 56, 29, 0.13),
+      inset 0 0 0 3px rgba(255, 255, 255, 0.48);
+  }
+
+  .instruction-card::before {
+    position: absolute;
+    top: -1.05rem;
+    left: 50%;
+    width: 3.8rem;
+    height: 1.45rem;
+    border: 1px solid rgba(86, 69, 49, 0.18);
+    background: rgba(213, 188, 149, 0.7);
+    content: '';
+    transform: translateX(-50%) rotate(-1.5deg);
+  }
+
+  .object-index,
+  .file-heading span,
+  .file-heading p,
+  .mode {
+    font-family: var(--font-mono);
+  }
+
+  .object-index {
+    color: var(--color-text-faint);
+    font-size: 0.66rem;
+    font-weight: 750;
+    letter-spacing: 0.08em;
+  }
+
+  .instruction-card h2,
+  .file-heading h2 {
+    margin: var(--space-3) 0 0;
+    font-family: var(--font-display);
+    font-weight: 700;
+  }
+
+  .instruction-card h2 {
+    font-size: 2rem;
+  }
+
+  .mode {
+    margin: var(--space-4) 0 var(--space-5);
+    padding-block: var(--space-3);
+    border-block: 1px solid var(--color-border-strong);
+    color: var(--color-accent-strong);
+    font-size: 0.7rem;
+    font-weight: 750;
+  }
+
+  .instruction-card ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .instruction-card li {
+    display: grid;
+    grid-template-columns: 2rem 1fr;
+    gap: var(--space-2);
+    padding-block: var(--space-3);
+    border-bottom: 1px dashed var(--color-border-strong);
+  }
+
+  .instruction-card li span {
+    color: var(--color-accent-strong);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 750;
+  }
+
+  .instruction-card li p {
+    margin: 0;
+    color: var(--color-text-soft);
+    font-size: 0.8rem;
+  }
+
+  .instruction-card > a {
+    display: inline-block;
+    margin-top: var(--space-5);
+    color: var(--color-accent-strong);
+    font-size: 0.78rem;
+    font-weight: 750;
+  }
+
+  .comment-file {
+    min-width: 0;
+    padding: clamp(1.25rem, 4vw, 2.6rem);
+    border: 1px solid rgba(76, 70, 61, 0.34);
+    border-radius: var(--radius-md);
+    background:
+      linear-gradient(115deg, rgba(255, 255, 255, 0.44), transparent 28%),
+      rgba(251, 250, 247, 0.88);
+    box-shadow:
+      0 22px 45px rgba(74, 54, 28, 0.17),
+      inset 0 0 0 5px rgba(255, 255, 255, 0.4);
+    backdrop-filter: blur(10px);
+  }
+
+  .comment-file::after {
+    position: absolute;
+    inset: 0.8rem;
+    border: 1px solid rgba(94, 83, 67, 0.12);
+    border-radius: calc(var(--radius-md) - 0.35rem);
+    content: '';
+    pointer-events: none;
+  }
+
+  .binder-ring {
+    position: absolute;
+    z-index: 3;
+    top: -1.7rem;
+    width: 1.55rem;
+    height: 3.2rem;
+    border: 4px solid #827b70;
+    border-radius: 50%;
+    background: transparent;
+    box-shadow: inset 2px 0 #ddd9d0, 1px 2px 4px rgba(46, 39, 31, 0.25);
+  }
+
+  .ring-left { left: 19%; }
+  .ring-right { right: 19%; }
+
+  .file-heading {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-5);
+    align-items: start;
+    padding-bottom: var(--space-5);
+    border-bottom: 1px solid rgba(91, 70, 41, 0.18);
+  }
+
+  .file-heading > div > span {
+    color: var(--color-accent-strong);
+    font-size: 0.75rem;
+  }
+
+  .file-heading h2 {
+    font-size: clamp(1.7rem, 4vw, 2.6rem);
+  }
+
+  .file-heading p {
+    margin: var(--space-2) 0 0;
+    color: var(--color-text-faint);
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
+  }
+
+  .file-state {
+    padding: 0.35rem 0.6rem;
+    border: 1px solid var(--color-border-strong);
+    border-radius: 999px;
+    color: var(--color-accent-strong);
+    font-size: 0.62rem !important;
+    font-weight: 750;
+  }
+
+  .comment-note {
+    position: relative;
+    z-index: 1;
+    margin-block: var(--space-5);
+    padding: var(--space-4);
+    border-left: 3px solid #d2a344;
+    background: rgba(231, 196, 116, 0.17);
+  }
+
+  .comment-note p {
+    margin: var(--space-1) 0 0;
+    color: var(--color-text-soft);
+    font-size: 0.82rem;
+  }
+
+  .utterances-wrap {
+    position: relative;
+    z-index: 1;
+    min-height: 15rem;
+    padding-top: var(--space-2);
+  }
+
+  .utterances-wrap :global(.utterances) {
+    max-width: none;
+  }
+
+  .comment-fallback {
+    margin: var(--space-5) 0 0;
+    padding-top: var(--space-4);
+    border-top: 1px dashed var(--color-border-strong);
+    color: var(--color-text-faint);
+    font-size: 0.74rem;
+    text-align: center;
+  }
+
+  .comment-fallback a {
+    color: var(--color-accent-strong);
+    font-weight: 750;
+  }
+
+  @media (max-width: 850px) {
+    .board {
+      grid-template-columns: 1fr;
+      gap: var(--space-7);
+    }
+
+    .instruction-card {
+      max-width: 30rem;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .board {
+      width: min(calc(100% - 0.6rem), var(--content-width));
+      padding: 1rem;
+      background-size: 30px 30px;
+    }
+
+    .comments-hero {
+      padding-block: var(--space-7);
+    }
+
+    .binder-ring {
+      transform: scale(0.82);
+    }
+  }
+</style>

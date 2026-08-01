@@ -27,6 +27,8 @@ On Windows PowerShell, use `npm.cmd` if script execution policy blocks `npm.ps1`
 - Content selection and sorting belong in `src/utils/content.ts`.
 - Site identity, navigation, links, and profile placeholders belong in
   `src/data/site.ts`.
+- Repository owner/name, public API URL, and interactive GitHub links also belong in
+  `src/data/site.ts`; do not duplicate them across components.
 - Layouts own page shells; components own reusable presentation; pages only compose
   data and components.
 - Global visual decisions belong in `src/styles/tokens.css`. Avoid one-off colors,
@@ -64,6 +66,11 @@ On Windows PowerShell, use `npm.cmd` if script execution policy blocks `npm.ps1`
 
 - Prefer the smallest coherent change and preserve unrelated user edits.
 - Do not commit generated `dist/`, `.astro/`, credentials, or private project assets.
+- Never embed a GitHub token in client code. Star counts may use the public repository
+  API; starring itself must continue through GitHub's authenticated UI.
+- The guestbook uses Utterances and public GitHub Issues. Keep the dedicated comments
+  route, explain the public/authenticated nature of comments, and preserve a direct
+  Issues fallback link.
 - Update `README.md`, content templates, and schemas together when the authoring
   workflow changes.
 - Before finishing implementation work, run `npm run check` and `npm run build`.

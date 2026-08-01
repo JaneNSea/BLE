@@ -56,3 +56,17 @@ npm run new:product -- product-codename
 工作流位于 `.github/workflows/deploy-pages.yml`。如果仓库名是
 `<username>.github.io`，一般不需要 `base`；如果发布地址包含仓库名，则将
 `base` 设置为 `/<repository-name>`。所有站内链接通过 `withBase()` 生成，以兼容两种形式。
+
+## 仓库 Star 与留言板
+
+首页会在浏览器中读取 GitHub 公共仓库 API，展示 `JaneNSea/BLE` 当前的 Star 数。
+计数在本地缓存十分钟，API 暂时不可用时显示 `—`。按钮只跳转到仓库页面，不需要也不会在前端保存 GitHub Token。
+
+留言页使用 [Utterances](https://utteranc.es/) 将评论存入 GitHub Issues。启用步骤：
+
+1. 确保 `JaneNSea/BLE` 是公开仓库，并已开启 Issues。
+2. 打开 `https://github.com/apps/utterances`，点击 Install。
+3. 选择 `Only select repositories`，授权 `JaneNSea/BLE`。
+4. 重新部署网站。首次有人评论时，Utterances 会按留言页路径自动创建对应 Issue。
+
+Utterances 评论者需要登录 GitHub 并授权评论应用；也可以直接在仓库 Issues 页面参与讨论。
