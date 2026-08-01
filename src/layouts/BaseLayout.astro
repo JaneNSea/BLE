@@ -27,7 +27,7 @@ const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site) : Astro.u
     <meta name="generator" content={Astro.generator} />
     <meta name="description" content={description} />
     {noIndex && <meta name="robots" content="noindex" />}
-    <link rel="icon" type="image/svg+xml" href={withBase('avatar-placeholder.svg')} />
+    <link rel="icon" type="image/jpeg" href={withBase(site.avatar)} />
     <link rel="canonical" href={canonical} />
     <meta property="og:type" content="website" />
     <meta property="og:title" content={title} />

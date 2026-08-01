@@ -3,6 +3,14 @@ import { navigation, site } from '../../data/site';
 import { withBase } from '../../utils/url';
 
 const currentPath = Astro.url.pathname;
+const isActive = (href: string) => {
+  const target = withBase(href);
+  if (href === '/') {
+    return currentPath === target || currentPath === target.replace(/\/$/, '');
+  }
+
+  return currentPath.startsWith(target);
+};
 ---
 
 <header class="site-header">
@@ -17,9 +25,9 @@ const currentPath = Astro.url.pathname;
         {navigation.map((item) => (
           <li>
             <a
-              class:list={['nav-link', { active: currentPath.includes(item.href) }]}
+              class:list={['nav-link', { active: isActive(item.href) }]}
               href={withBase(item.href)}
-              aria-current={currentPath.includes(item.href) ? 'page' : undefined}
+              aria-current={isActive(item.href) ? 'page' : undefined}
             >
               {item.label}
             </a>

@@ -25,8 +25,8 @@ npm run build
 
 ## 第一次替换
 
-1. 修改 `src/data/site.ts` 中的姓名、简介、链接和联系方式。
-2. 用真实头像替换 `public/avatar-placeholder.svg`，并更新配置路径。
+1. 修改 `src/data/site.ts` 中的简介、角色和其他个人资料。
+2. 将头像文件命名为 `avatar.jpg`，放到 `public/avatar.jpg`。
 3. 删除或改写带有“示例/待替换”标记的内容文件。
 4. 在 `astro.config.mjs` 设置 GitHub Pages 的 `site`；项目型 Pages 还需设置 `base`。
 5. 在 GitHub 仓库的 Settings → Pages 中选择 GitHub Actions 作为发布源。
