@@ -17,7 +17,7 @@ export const site = {
     url: 'https://github.com/JaneNSea/BLE',
     api: 'https://api.github.com/repos/JaneNSea/BLE',
   },
-  capabilities: ['系统设计', '全栈开发', 'OpenHarmony开发', '产品设计', 'Agent开发','Arkts开发'],
+  capabilities: ['系统设计', '全栈开发', 'OpenHarmony开发', '产品设计', 'Agent开发','鸿蒙开发'],
 } as const;
 
 export const navigation = [
