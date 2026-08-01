@@ -159,27 +159,55 @@ import ValueDeck from '../../components/content/superme/ValueDeck.astro';
   id="product-enterprise"
   index="06"
   eyebrow="Enterprise solution"
-  title="让 Agent 进入企业，而不是让代码离开企业"
-  summary="以 OpenHarmony Issue 为例，平台在云端组织专家能力，企业则在隔离虚拟机中保留代码、凭据和最终执行权。双方只交换完成任务所需的最小上下文与结构化证据。"
+  title="云端 Agent 集群，让企业只保留一个轻量入口"
+  summary="复杂分析、方案生成与多 Agent 协作在云端完成；企业本地只需要部署一个低功耗小 Agent，负责接入授权数据、调用现有工具并验证执行结果。OpenHarmony Issue 是首个示例，但不是企业方案的边界。"
   tone="soft"
 >
   <EnterpriseSolution />
   <CaseGrid
     items={[
       {
-        eyebrow: 'Experience',
-        title: '实况窗与跨端流转',
-        text: '把接单、执行、待验收和争议状态变成可实时感知的信息，减少反复打开应用查询。',
+        eyebrow: 'Cloud cluster',
+        title: '复杂能力集中在云端',
+        text: '按任务动态组织分析、代码、测试、审核等专家 Agent，让企业无需在本地维护完整模型集群。',
       },
       {
-        eyebrow: 'On-device',
-        title: 'TaskPool 与端侧 AI',
-        text: '并行解析文件，在端侧完成敏感信息预处理与轻量推理，减少不必要的数据上传。',
+        eyebrow: 'Local agent',
+        title: '本地节点保持低功耗',
+        text: '小 Agent 只承担授权接入、敏感信息预处理、工具调用和结果验证，把数据边界留在企业侧。',
       },
       {
-        eyebrow: 'Infrastructure',
-        title: '自主基础软件路线',
-        text: '围绕毕昇 JDK、EulerOS、openGauss 与华为云，形成面向鸿蒙生态的一致技术路径。',
+        eyebrow: 'Solution template',
+        title: '按企业场景替换能力模块',
+        text: 'OpenHarmony 代码协作只是第一套模板，后续可以围绕不同企业的工具链、数据源和验收规则扩展方案。',
+      },
+    ]}
+  />
+</ProductSection>
+
+<ProductSection
+  id="product-harmony"
+  index="07"
+  eyebrow="Harmony first"
+  title="从 HarmonyOS 与 OpenHarmonyOS 开始部署"
+  summary="鸿蒙生态不是附加技术标签，而是 SuperMe 明确的首发平台策略：产品能力将优先适配 HarmonyOS 与 OpenHarmonyOS 的设备、应用和行业场景，而不是先从传统移动端与桌面平台起步。"
+>
+  <CaseGrid
+    items={[
+      {
+        eyebrow: 'HarmonyOS',
+        title: '优先建设用户侧产品入口',
+        text: '围绕 HarmonyOS 的跨设备体验、实况窗与 TaskPool，让任务发布、进度感知和结果验收进入真实设备。',
+      },
+      {
+        eyebrow: 'OpenHarmonyOS',
+        title: '优先适配行业与企业设备',
+        text: '通过可裁剪的本地小 Agent 接入行业终端、企业工具和隔离环境，承接云端 Agent 集群的执行结果。',
+      },
+      {
+        eyebrow: 'Cloud foundation',
+        title: '形成一致的端云技术路线',
+        text: '后端优先围绕华为云、EulerOS、毕昇 JDK 与 openGauss 演进，减少端、云和数据底座之间的割裂。',
       },
     ]}
   />
@@ -187,7 +215,7 @@ import ValueDeck from '../../components/content/superme/ValueDeck.astro';
 
 <ProductSection
   id="product-engineering"
-  index="07"
+  index="08"
   eyebrow="Engineering"
   title="MVP 先验证闭环，架构随真实压力演进"
   summary="当前产品采用模块化单体控制复杂度，优先证明发布、接单、执行、审核、验收与结算可以完整运行；目标架构则为服务自治、故障隔离和弹性扩容预留清晰边界。"
@@ -213,7 +241,7 @@ import ValueDeck from '../../components/content/superme/ValueDeck.astro';
 
 <ProductSection
   id="product-progress"
-  index="08"
+  index="09"
   eyebrow="Growth"
   title="从 MVP 走向可持续的双边网络"
   summary="平台从校园、个人与短周期数字任务切入，用真实履约验证产品；随后拓展到企业办公场景，通过交易服务费、企业订阅和合规数据服务形成收入。"

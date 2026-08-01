@@ -22,12 +22,13 @@ const { id, index, eyebrow, title, summary, tone = 'plain' } = Astro.props;
 
 <style>
   .product-section {
-    padding-block: clamp(4.5rem, 9vw, 8rem);
+    padding-top: clamp(3.25rem, 5vw, 4.5rem);
+    padding-bottom: clamp(2rem, 3vw, 2.75rem);
     border-top: 1px solid var(--color-border);
     scroll-margin-top: 5rem;
   }
 
-  .product-section:first-child { padding-top: var(--space-7); border-top: 0; }
+  .product-section:first-child { padding-top: var(--space-6); border-top: 0; }
 
   .tone-soft {
     position: relative;
@@ -68,8 +69,11 @@ const { id, index, eyebrow, title, summary, tone = 'plain' } = Astro.props;
     line-height: 1.8;
   }
 
-  .section-body { margin-top: clamp(2.5rem, 6vw, 5rem); }
+  .section-body { margin-top: clamp(2rem, 4vw, 3.5rem); }
   .section-body :global(> p) { max-width: 56rem; margin: var(--space-5) 0; }
+  .section-body :global(> *) { margin-block: var(--space-5) !important; }
+  .section-body :global(> :first-child) { margin-top: 0 !important; }
+  .section-body :global(> :last-child) { margin-bottom: 0 !important; }
 
   @media (max-width: 900px) {
     header { grid-template-columns: 5rem 1fr; }
@@ -77,8 +81,8 @@ const { id, index, eyebrow, title, summary, tone = 'plain' } = Astro.props;
   }
 
   @media (max-width: 560px) {
-    .product-section { padding-block: var(--space-8); }
-    .product-section:first-child { padding-top: var(--space-7); }
+    .product-section { padding-top: var(--space-7); padding-bottom: var(--space-5); }
+    .product-section:first-child { padding-top: var(--space-6); }
     .tone-soft { padding-inline: var(--space-4); }
     header { grid-template-columns: 1fr; gap: var(--space-4); }
     h2 { font-size: 1.85rem; line-height: 1.12; }
