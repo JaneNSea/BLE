@@ -4,8 +4,8 @@
 
 This repository is a personal technology brand site for interviewers, investors,
 and competition judges. The homepage is curated proof of value, not a chronological
-blog feed. Closed-source products receive the highest visual priority, followed by
-learning projects, concise engineering notes, and personal design principles.
+blog feed. It gives products, learning projects, engineering notes, and the personal
+profile four explicit entry points before presenting selected content.
 
 ## Stack and commands
 
@@ -48,8 +48,12 @@ On Windows PowerShell, use `npm.cmd` if script execution policy blocks `npm.ps1`
 
 ## UI and accessibility
 
-- Preserve the hierarchy: identity + flagship product above the fold, then evidence,
-  products, learning work, notes, principles, and contact.
+- Preserve the hierarchy: a compact identity introduction, four clear content choices,
+  then selected product, learning work, notes, principles, and contact.
+- The visual language is warm editorial: cream paper-like backgrounds, muted amber,
+  dark brown text, restrained shadows, and clear serif-led headings.
+- Do not reintroduce neon accents, dark dashboard themes, grid overlays, fake system
+  metrics, circuit graphics, or decorative effects that compete with navigation.
 - Keep motion restrained and support `prefers-reduced-motion`.
 - Maintain keyboard focus states, semantic landmarks, useful alt text, and readable
   contrast. Do not make hover the only way to reveal essential information.

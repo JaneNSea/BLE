@@ -16,350 +16,468 @@ const [allProducts, allProjects, allNotes, allPrinciples] = await Promise.all([
   getCollection('principles'),
 ]);
 
-const featuredProducts = featured(allProducts);
-const featuredProjects = featured(allProjects).slice(0, 4);
-const latestNotes = allNotes.filter(isPublished).sort(byDate).slice(0, 5);
+const publishedProducts = allProducts.filter(isPublished).sort(byPriority);
+const publishedProjects = allProjects.filter(isPublished).sort(byPriority);
+const publishedNotes = allNotes.filter(isPublished).sort(byDate);
+const featuredProduct = featured(allProducts)[0] ?? publishedProducts[0];
+const selectedProjects = featured(allProjects).slice(0, 2);
+const latestNotes = publishedNotes.slice(0, 4);
 const principles = allPrinciples
   .filter((entry) => !entry.data.draft)
   .sort((a, b) => a.data.order - b.data.order);
-const publicWorkCount = allProjects.filter(isPublished).length;
-const noteCount = allNotes.filter(isPublished).length;
-const productCount = allProducts.filter(isPublished).length;
+
+const areas = [
+  {
+    index: '01',
+    title: '商业产品',
+    description: '了解闭源项目解决的问题、产品方案、架构决策和商业化方向。',
+    href: '/products/',
+    count: publishedProducts.length,
+    unit: '个案例',
+  },
+  {
+    index: '02',
+    title: '学习项目',
+    description: '浏览课程设计、个人 Demo 与开源实践的完整实现过程。',
+    href: '/projects/',
+    count: publishedProjects.length,
+    unit: '个项目',
+  },
+  {
+    index: '03',
+    title: '技术笔记',
+    description: '查看针对具体工程问题的分析、解法、代码与适用边界。',
+    href: '/notes/',
+    count: publishedNotes.length,
+    unit: '篇文章',
+  },
+  {
+    index: '04',
+    title: '关于我',
+    description: '认识我的技术方向、思考方式，以及做产品和工程判断的原则。',
+    href: '/about/',
+    count: principles.length,
+    unit: '条原则',
+  },
+];
 ---
 
 <BaseLayout>
-  <section class="hero shell">
-    <div class="hero-copy">
-      <div class="identity">
-        <img src={withBase(site.avatar)} alt={`${site.name} 的头像占位图`} width="72" height="72" />
-        <div>
-          <p class="identity-name">{site.name}</p>
-          <p>{site.role}</p>
-        </div>
-      </div>
-      <p class="eyebrow">Portfolio / 2026</p>
-      <h1 class="display-title">把想法做成<br /><span>可信的系统。</span></h1>
+  <section class="intro shell">
+    <div class="intro-copy">
+      <p class="eyebrow">Hello, this is {site.name}</p>
+      <h1 class="display-title">我在这里记录做产品、写代码和解决问题的过程。</h1>
       <p class="lede">{site.description}</p>
       <div class="button-row">
-        <a class="button button--primary" href="#featured-product">查看旗舰产品 ↓</a>
-        <a class="button" href={site.social.github} rel="noreferrer" target="_blank">GitHub ↗</a>
+        <a class="button button--primary" href="#explore">选择你想看的内容</a>
+        <a class="button" href={site.social.github} rel="noreferrer" target="_blank">访问 GitHub ↗</a>
       </div>
     </div>
 
-    <aside class="hero-signal" aria-label="当前状态与能力">
-      <div class="signal-head">
-        <span class="live-dot"></span>
-        <span>NOW</span>
+    <aside class="profile-card content-card" aria-label="个人简介">
+      <img src={withBase(site.avatar)} alt={`${site.name} 的头像占位图`} width="112" height="112" />
+      <div>
+        <p class="profile-name">{site.name}</p>
+        <p class="profile-role">{site.role}</p>
       </div>
-      <p>{site.status}</p>
-      <dl>
-        <div><dt>Products</dt><dd>{String(productCount).padStart(2, '0')}</dd></div>
-        <div><dt>Projects</dt><dd>{String(publicWorkCount).padStart(2, '0')}</dd></div>
-        <div><dt>Notes</dt><dd>{String(noteCount).padStart(2, '0')}</dd></div>
-      </dl>
+      <p class="profile-status">{site.status}</p>
+      <ul>
+        {site.capabilities.slice(0, 4).map((capability) => <li>{capability}</li>)}
+      </ul>
     </aside>
   </section>
 
-  <div class="capability-strip" aria-label="主要能力">
-    <div class="shell capability-inner">
-      {site.capabilities.map((capability, index) => (
-        <><span>{capability}</span>{index < site.capabilities.length - 1 && <i>◆</i>}</>
+  <section id="explore" class="page-section shell explore-section">
+    <div class="explore-intro">
+      <p class="eyebrow">Explore</p>
+      <h2>你想先了解哪一部分？</h2>
+      <p>站内内容分成四个明确入口。你可以从目标出发，而不必按首页顺序一直往下翻。</p>
+    </div>
+    <nav class="area-grid" aria-label="内容分类">
+      {areas.map((area) => (
+        <a class="area-card" href={withBase(area.href)}>
+          <span class="area-index">{area.index}</span>
+          <div>
+            <h3>{area.title}</h3>
+            <p>{area.description}</p>
+          </div>
+          <span class="area-count">{area.count} {area.unit}</span>
+          <span class="area-arrow" aria-hidden="true">→</span>
+        </a>
       ))}
+    </nav>
+  </section>
+
+  {featuredProduct && (
+    <section class="page-section shell">
+      <SectionHeading
+        eyebrow="Selected product"
+        title="当前重点产品"
+        description="这里保留最重要的商业项目，但它是一个明确入口，而不是覆盖整个首页的视觉舞台。"
+        href="/products/"
+        linkLabel="查看所有产品"
+      />
+      <ProductCard entry={featuredProduct} prominent />
+    </section>
+  )}
+
+  <section class="page-section shell recent-section">
+    <div class="recent-projects">
+      <SectionHeading
+        eyebrow="Selected projects"
+        title="精选学习项目"
+        href="/projects/"
+        linkLabel="全部项目"
+      />
+      {selectedProjects.length > 0 ? (
+        <div class="cards-grid">
+          {selectedProjects.map((entry) => <ProjectCard entry={entry} />)}
+        </div>
+      ) : (
+        <div class="empty-state">精选项目会显示在这里。</div>
+      )}
     </div>
-  </div>
 
-  <section id="featured-product" class="page-section shell">
-    <SectionHeading
-      eyebrow="01 / Flagship"
-      title="闭源不等于无法证明。"
-      description="用产品价值、脱敏架构、关键决策和真实结果建立可信度。企业级项目在这里拥有最高视觉优先级。"
-      href="/products/"
-      linkLabel="所有产品"
-    />
-    {featuredProducts.length > 0 ? (
-      <div class="product-stack">
-        {featuredProducts.map((entry, index) => <ProductCard entry={entry} prominent={index === 0} />)}
-      </div>
-    ) : (
-      <div class="empty-state">在产品内容中设置 featured: true 后，旗舰产品会出现在这里。</div>
-    )}
-  </section>
-
-  <section class="page-section shell">
-    <SectionHeading
-      eyebrow="02 / Selected work"
-      title="从学习项目到完整交付。"
-      description="项目不是技术栈清单，而是问题、决策、实现和反思的完整证据链。"
-      href="/projects/"
-      linkLabel="项目归档"
-    />
-    {featuredProjects.length > 0 ? (
-      <div class="cards-grid">
-        {featuredProjects.sort(byPriority).map((entry) => <ProjectCard entry={entry} />)}
-      </div>
-    ) : (
-      <div class="empty-state">精选学习项目会显示在这里。</div>
-    )}
-  </section>
-
-  <section class="page-section shell">
-    <SectionHeading
-      eyebrow="03 / Engineering notes"
-      title="一次只解决一个技术问题。"
-      description="短、准、可以复现。文章用于证明分析路径，而不是堆积篇幅。"
-      href="/notes/"
-      linkLabel="全部笔记"
-    />
-    <div>
-      {latestNotes.map((entry) => <NoteRow entry={entry} />)}
+    <div class="recent-notes">
+      <SectionHeading
+        eyebrow="Latest notes"
+        title="最近的技术笔记"
+        href="/notes/"
+        linkLabel="全部笔记"
+      />
+      <div>{latestNotes.map((entry) => <NoteRow entry={entry} />)}</div>
     </div>
   </section>
 
-  <section class="page-section shell">
-    <SectionHeading
-      eyebrow="04 / Principles"
-      title="我的设计与工程判断。"
-      description="原则必须能在真实项目中找到证据，否则它只是一句口号。"
-      href="/about/"
-      linkLabel="了解更多"
-    />
-    <div class="principles-grid">
+  <section class="page-section shell principles-section">
+    <div class="principles-intro">
+      <p class="eyebrow">How I think</p>
+      <h2>不只展示做过什么，也说明为什么这样做。</h2>
+      <a href={withBase('about/')}>阅读完整介绍 →</a>
+    </div>
+    <ol class="principle-list">
       {principles.map((principle) => (
-        <article class="principle-card content-card">
+        <li>
           <span>{String(principle.data.order).padStart(2, '0')}</span>
-          <h3>{principle.data.title}</h3>
-          <p>{principle.data.summary}</p>
-          {principle.data.evidence && <small>Evidence — {principle.data.evidence}</small>}
-        </article>
+          <div>
+            <h3>{principle.data.title}</h3>
+            <p>{principle.data.summary}</p>
+          </div>
+        </li>
       ))}
-    </div>
+    </ol>
   </section>
 
   <section class="contact-section shell">
-    <p class="eyebrow">Open to conversation</p>
-    <h2>如果你正在寻找能同时理解技术与产品的人，我们可以聊聊。</h2>
-    <div class="button-row">
-      <a class="button button--primary" href={`mailto:${site.email}`}>发送邮件 ↗</a>
-      <a class="button" href={withBase('about/')}>先了解我</a>
+    <div>
+      <p class="eyebrow">Say hello</p>
+      <h2>有想讨论的项目、职位或合作方向？</h2>
+      <p>给我一封邮件，告诉我你从哪里看到这里，以及你对哪部分内容感兴趣。</p>
     </div>
+    <a class="button button--primary" href={`mailto:${site.email}`}>发送邮件 ↗</a>
   </section>
 </BaseLayout>
 
 <style>
-  .hero {
+  .intro {
     display: grid;
-    min-height: calc(100vh - 4.5rem);
-    grid-template-columns: minmax(0, 1fr) minmax(18rem, 0.38fr);
+    grid-template-columns: minmax(0, 1.45fr) minmax(17rem, 0.55fr);
     gap: var(--space-7);
-    align-items: end;
-    padding-block: var(--space-8);
-  }
-
-  .identity {
-    display: flex;
-    gap: var(--space-4);
     align-items: center;
-    margin-bottom: var(--space-8);
+    padding-block: var(--space-8) var(--space-7);
   }
 
-  .identity img {
-    width: 4.5rem;
-    height: 4.5rem;
-    border: 1px solid var(--color-border-strong);
-    border-radius: 1.25rem;
+  .intro > * {
+    min-width: 0;
+  }
+
+  .profile-card {
+    padding: var(--space-5);
+  }
+
+  .profile-card img {
+    width: 5.5rem;
+    height: 5.5rem;
+    margin-bottom: var(--space-5);
+    border: 1px solid var(--color-border);
+    border-radius: 50%;
     object-fit: cover;
+    background: var(--color-bg-soft);
   }
 
-  .identity p {
+  .profile-name,
+  .profile-role,
+  .profile-status {
     margin: 0;
-    color: var(--color-text-soft);
-    font-size: 0.82rem;
   }
 
-  .identity .identity-name {
-    color: var(--color-text);
-    font-size: 1rem;
+  .profile-name {
+    font-family: var(--font-display);
+    font-size: 1.35rem;
     font-weight: 700;
   }
 
-  .display-title span {
+  .profile-role {
     color: var(--color-text-soft);
+    font-size: 0.84rem;
   }
 
-  .hero-signal {
-    padding: var(--space-5);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    background: var(--color-surface);
-    box-shadow: var(--shadow-card);
-  }
-
-  .signal-head {
-    display: flex;
-    gap: var(--space-2);
-    align-items: center;
-    color: var(--color-text-faint);
-    font-family: var(--font-mono);
-    font-size: 0.67rem;
-    letter-spacing: 0.15em;
-  }
-
-  .live-dot {
-    width: 0.45rem;
-    height: 0.45rem;
-    border-radius: 50%;
-    background: var(--color-accent);
-    box-shadow: 0 0 12px rgba(103, 245, 200, 0.75);
-  }
-
-  .hero-signal > p {
-    margin: var(--space-5) 0 var(--space-7);
-    font-size: 1.2rem;
-    font-weight: 570;
-    line-height: 1.35;
-  }
-
-  .hero-signal dl {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: var(--space-3);
-    margin: 0;
-  }
-
-  .hero-signal dl div {
-    padding-top: var(--space-3);
-    border-top: 1px solid var(--color-border);
-  }
-
-  .hero-signal dt {
-    color: var(--color-text-faint);
-    font-size: 0.64rem;
-  }
-
-  .hero-signal dd {
-    margin: var(--space-1) 0 0;
-    color: var(--color-accent);
-    font-family: var(--font-mono);
-  }
-
-  .capability-strip {
-    overflow: hidden;
+  .profile-status {
+    margin-top: var(--space-5);
+    padding-block: var(--space-4);
     border-block: 1px solid var(--color-border);
-    background: rgba(255, 255, 255, 0.018);
+    color: var(--color-accent-strong);
+    font-size: 0.85rem;
+    font-weight: 650;
   }
 
-  .capability-inner {
+  .profile-card ul {
     display: flex;
-    min-height: 4.5rem;
-    justify-content: space-between;
-    gap: var(--space-5);
-    align-items: center;
-    white-space: nowrap;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin: var(--space-4) 0 0;
+    padding: 0;
+    list-style: none;
   }
 
-  .capability-inner span {
+  .profile-card li {
+    padding: 0.3rem 0.55rem;
+    border-radius: 999px;
     color: var(--color-text-soft);
-    font-size: 0.82rem;
+    background: var(--color-accent-soft);
+    font-size: 0.7rem;
   }
 
-  .capability-inner i {
-    color: var(--color-accent);
-    font-size: 0.35rem;
-    font-style: normal;
-  }
-
-  .product-stack {
+  .explore-section {
     display: grid;
-    gap: var(--space-5);
+    grid-template-columns: minmax(13rem, 0.45fr) minmax(0, 1.55fr);
+    gap: var(--space-7);
+    align-items: start;
   }
 
-  .principles-grid {
+  .explore-intro {
+    position: sticky;
+    top: 7rem;
+  }
+
+  .explore-intro h2,
+  .principles-intro h2,
+  .contact-section h2 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 4vw, 3.2rem);
+    font-weight: 650;
+    letter-spacing: -0.04em;
+    line-height: 1.12;
+  }
+
+  .explore-intro > p:last-child {
+    color: var(--color-text-soft);
+  }
+
+  .area-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: var(--space-4);
   }
 
-  .principle-card {
-    min-height: 22rem;
+  .area-card {
+    position: relative;
+    display: flex;
+    min-height: 18rem;
+    flex-direction: column;
     padding: var(--space-5);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: rgba(255, 251, 243, 0.66);
+    box-shadow: var(--shadow-card);
+    transition: border-color var(--transition), background var(--transition), transform var(--transition);
   }
 
-  .principle-card > span {
-    color: var(--color-accent);
-    font-family: var(--font-mono);
+  .area-card:hover {
+    border-color: rgba(143, 106, 44, 0.32);
+    background: var(--color-surface-strong);
+    transform: translateY(-2px);
+  }
+
+  .area-index {
+    color: var(--color-accent-strong);
     font-size: 0.72rem;
+    font-weight: 800;
   }
 
-  .principle-card h3 {
-    margin: var(--space-7) 0 var(--space-4);
-    font-size: clamp(1.5rem, 3vw, 2.2rem);
-    font-weight: 600;
-    letter-spacing: -0.04em;
+  .area-card > div {
+    margin-block: auto;
+  }
+
+  .area-card h3 {
+    margin: 0 0 var(--space-3);
+    font-family: var(--font-display);
+    font-size: 1.8rem;
     line-height: 1.1;
   }
 
-  .principle-card p {
+  .area-card p {
+    margin: 0;
     color: var(--color-text-soft);
+    font-size: 0.88rem;
   }
 
-  .principle-card small {
+  .area-count {
+    color: var(--color-text-faint);
+    font-size: 0.72rem;
+  }
+
+  .area-arrow {
     position: absolute;
     right: var(--space-5);
     bottom: var(--space-5);
-    left: var(--space-5);
-    padding-top: var(--space-3);
+    color: var(--color-accent-strong);
+    transition: transform var(--transition);
+  }
+
+  .area-card:hover .area-arrow {
+    transform: translateX(4px);
+  }
+
+  .recent-section {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(20rem, 0.95fr);
+    gap: var(--space-7);
+  }
+
+  .recent-section :global(.project-card) {
+    grid-column: 1 / -1;
+  }
+
+  .recent-notes {
+    padding-left: var(--space-7);
+    border-left: 1px solid var(--color-border);
+  }
+
+  .principles-section {
+    display: grid;
+    grid-template-columns: 0.75fr 1.25fr;
+    gap: var(--space-8);
+  }
+
+  .principles-intro a {
+    display: inline-block;
+    margin-top: var(--space-5);
+    color: var(--color-accent-strong);
+    font-size: 0.84rem;
+    font-weight: 700;
+  }
+
+  .principle-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .principle-list li {
+    display: grid;
+    grid-template-columns: 3rem 1fr;
+    gap: var(--space-4);
+    padding-block: var(--space-5);
     border-top: 1px solid var(--color-border);
-    color: var(--color-text-faint);
-    font-family: var(--font-mono);
-    font-size: 0.66rem;
+  }
+
+  .principle-list li > span {
+    color: var(--color-accent-strong);
+    font-size: 0.72rem;
+    font-weight: 800;
+  }
+
+  .principle-list h3 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 1.35rem;
+  }
+
+  .principle-list p {
+    margin: var(--space-2) 0 0;
+    color: var(--color-text-soft);
+    font-size: 0.9rem;
   }
 
   .contact-section {
-    padding-block: var(--space-9);
-    text-align: center;
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-7);
+    align-items: center;
+    margin-block: var(--space-8);
+    padding: clamp(1.5rem, 4vw, 3rem);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: rgba(226, 204, 164, 0.3);
   }
 
   .contact-section h2 {
-    max-width: 21ch;
-    margin: 0 auto;
-    font-size: clamp(2.2rem, 6vw, 5rem);
-    font-weight: 600;
-    letter-spacing: -0.055em;
-    line-height: 1.04;
+    max-width: 22ch;
   }
 
-  .contact-section .button-row {
-    justify-content: center;
+  .contact-section div > p:last-child {
+    margin: var(--space-3) 0 0;
+    color: var(--color-text-soft);
   }
 
-  @media (max-width: 850px) {
-    .hero {
-      min-height: auto;
-      grid-template-columns: 1fr;
-      padding-block: var(--space-8);
-    }
+  .contact-section > a {
+    flex: none;
+  }
 
-    .hero-signal {
-      margin-top: var(--space-6);
-    }
-
-    .principles-grid {
+  @media (max-width: 900px) {
+    .intro,
+    .explore-section,
+    .recent-section,
+    .principles-section {
       grid-template-columns: 1fr;
     }
 
-    .principle-card {
-      min-height: 18rem;
+    .intro {
+      padding-block: var(--space-8) var(--space-7);
+    }
+
+    .profile-card {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: var(--space-4);
+      align-items: center;
+    }
+
+    .profile-card img {
+      margin: 0;
+      grid-row: span 2;
+    }
+
+    .profile-status,
+    .profile-card ul {
+      grid-column: 1 / -1;
+    }
+
+    .explore-intro {
+      position: static;
+    }
+
+    .recent-notes {
+      padding: var(--space-7) 0 0;
+      border-top: 1px solid var(--color-border);
+      border-left: 0;
     }
   }
 
   @media (max-width: 620px) {
-    .identity {
-      margin-bottom: var(--space-7);
+    .area-grid {
+      grid-template-columns: 1fr;
     }
 
-    .capability-inner {
-      justify-content: flex-start;
-      overflow-x: auto;
+    .area-card {
+      min-height: 14rem;
+    }
+
+    .contact-section {
+      align-items: flex-start;
+      flex-direction: column;
     }
   }
 </style>

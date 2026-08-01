@@ -18,7 +18,7 @@ const { eyebrow, title, description, href, linkLabel = '查看全部' } = Astro.
     <h2>{title}</h2>
     {description && <p class="section-description">{description}</p>}
   </div>
-  {href && <a class="section-link" href={withBase(href)}>{linkLabel} →</a>}
+  {href && <a class="section-link" href={withBase(href)}>{linkLabel}<span>→</span></a>}
 </div>
 
 <style>
@@ -27,35 +27,41 @@ const { eyebrow, title, description, href, linkLabel = '查看全部' } = Astro.
     justify-content: space-between;
     gap: var(--space-6);
     align-items: end;
-    margin-bottom: var(--space-7);
+    margin-bottom: var(--space-6);
   }
 
   h2 {
-    max-width: 18ch;
+    max-width: 20ch;
     margin: 0;
-    font-size: clamp(2rem, 4.5vw, 3.8rem);
-    font-weight: 600;
-    letter-spacing: -0.05em;
-    line-height: 1.04;
+    font-family: var(--font-display);
+    font-size: clamp(1.9rem, 4vw, 3.1rem);
+    font-weight: 650;
+    letter-spacing: -0.04em;
+    line-height: 1.12;
   }
 
   .section-description {
     max-width: 40rem;
-    margin: var(--space-4) 0 0;
+    margin: var(--space-3) 0 0;
     color: var(--color-text-soft);
   }
 
   .section-link {
+    display: inline-flex;
     flex: none;
-    padding-bottom: 0.18rem;
-    border-bottom: 1px solid var(--color-border-strong);
-    color: var(--color-text-soft);
-    font-size: 0.86rem;
+    gap: var(--space-2);
+    align-items: center;
+    color: var(--color-accent-strong);
+    font-size: 0.84rem;
+    font-weight: 700;
   }
 
-  .section-link:hover {
-    color: var(--color-accent);
-    border-color: var(--color-accent);
+  .section-link span {
+    transition: transform var(--transition);
+  }
+
+  .section-link:hover span {
+    transform: translateX(3px);
   }
 
   @media (max-width: 620px) {

@@ -9,10 +9,10 @@ interface Props {
 
 const { entry } = Astro.props;
 const typeLabels = {
-  course: 'Course Project',
-  personal: 'Personal Project',
-  experiment: 'Experiment',
-  'open-source': 'Open Source',
+  course: '课程设计',
+  personal: '个人项目',
+  experiment: '技术实验',
+  'open-source': '开源项目',
 };
 ---
 
@@ -20,65 +20,80 @@ const typeLabels = {
   {entry.data.cover ? (
     <img class="project-cover" src={withBase(entry.data.cover)} alt="" loading="lazy" />
   ) : (
-    <div class="project-index" aria-hidden="true">{String(entry.data.priority).padStart(2, '0')}</div>
+    <div class="project-cover project-cover--placeholder" aria-hidden="true">
+      <span>{String(entry.data.year).slice(-2)}</span>
+      <small>{typeLabels[entry.data.type]}</small>
+    </div>
   )}
-  <div class="meta-line">
-    <span>{typeLabels[entry.data.type]}</span>
-    <span>·</span>
-    <span>{entry.data.year}</span>
-    <span>·</span>
-    <span>{entry.data.status}</span>
-  </div>
-  <h3><a href={withBase(`projects/${entry.id}/`)}>{entry.data.title}</a></h3>
-  <p>{entry.data.summary}</p>
-  <div class="project-bottom">
-    <TagList tags={entry.data.tags} />
-    <span class="read-more">查看案例 →</span>
+  <div class="project-content">
+    <div class="meta-line">
+      <span>{typeLabels[entry.data.type]}</span>
+      <span>{entry.data.year}</span>
+      <span>{entry.data.status}</span>
+    </div>
+    <h3><a href={withBase(`projects/${entry.id}/`)}>{entry.data.title}</a></h3>
+    <p>{entry.data.summary}</p>
+    <div class="project-bottom">
+      <TagList tags={entry.data.tags} />
+      <span class="read-more">查看项目 →</span>
+    </div>
   </div>
 </article>
 
 <style>
   .project-card {
-    display: flex;
-    min-height: 25rem;
-    flex-direction: column;
     grid-column: span 6;
-    padding: clamp(1.4rem, 3vw, 2.2rem);
-  }
-
-  .project-index {
-    display: grid;
-    width: 3.2rem;
-    height: 3.2rem;
-    place-items: center;
-    margin-bottom: auto;
-    border: 1px solid var(--color-border);
-    border-radius: 50%;
-    color: var(--color-accent);
-    background: var(--color-accent-soft);
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
   }
 
   .project-cover {
-    width: calc(100% + clamp(2.8rem, 6vw, 4.4rem));
-    height: 11rem;
-    margin: clamp(-2.2rem, -3vw, -1.4rem);
-    margin-bottom: auto;
+    width: 100%;
+    height: 12rem;
     border-bottom: 1px solid var(--color-border);
     object-fit: cover;
   }
 
-  .meta-line {
-    margin-top: var(--space-7);
+  .project-cover--placeholder {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    padding: var(--space-5);
+    color: #584528;
+    background: linear-gradient(145deg, #ead8b8, #d7ba82);
+  }
+
+  .project-cover--placeholder span {
+    font-family: var(--font-display);
+    font-size: 5rem;
+    line-height: 0.75;
+    opacity: 0.28;
+  }
+
+  .project-cover--placeholder small {
+    font-size: 0.7rem;
+    font-weight: 750;
+    letter-spacing: 0.1em;
+  }
+
+  .project-content {
+    display: flex;
+    min-height: 18rem;
+    flex-direction: column;
+    padding: clamp(1.3rem, 3vw, 1.9rem);
+  }
+
+  .meta-line span + span::before {
+    margin-right: var(--space-3);
+    color: var(--color-accent);
+    content: '•';
   }
 
   h3 {
     margin: var(--space-4) 0 0;
-    font-size: clamp(1.7rem, 4vw, 2.7rem);
-    font-weight: 600;
-    letter-spacing: -0.045em;
-    line-height: 1.08;
+    font-family: var(--font-display);
+    font-size: clamp(1.55rem, 3vw, 2.15rem);
+    font-weight: 680;
+    letter-spacing: -0.035em;
+    line-height: 1.15;
   }
 
   h3 a::after {
@@ -88,8 +103,9 @@ const typeLabels = {
   }
 
   p {
-    margin: var(--space-4) 0 var(--space-6);
+    margin: var(--space-3) 0 var(--space-5);
     color: var(--color-text-soft);
+    font-size: 0.92rem;
   }
 
   .project-bottom {
@@ -102,13 +118,13 @@ const typeLabels = {
 
   .read-more {
     flex: none;
-    color: var(--color-accent);
-    font-size: 0.8rem;
+    color: var(--color-accent-strong);
+    font-size: 0.78rem;
+    font-weight: 700;
   }
 
   @media (max-width: 720px) {
     .project-card {
-      min-height: 22rem;
       grid-column: 1 / -1;
     }
 

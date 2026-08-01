@@ -3,12 +3,12 @@
   <desc id="desc">替换为你的真实头像</desc>
   <defs>
     <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
-      <stop stop-color="#1b2424"/>
-      <stop offset="1" stop-color="#0c1012"/>
+      <stop stop-color="#ead7b3"/>
+      <stop offset="1" stop-color="#c9a96d"/>
     </linearGradient>
   </defs>
   <rect width="240" height="240" rx="56" fill="url(#bg)"/>
-  <circle cx="120" cy="92" r="43" fill="#67f5c8" fill-opacity=".2" stroke="#67f5c8" stroke-opacity=".8"/>
-  <path d="M48 213c8-43 34-66 72-66s64 23 72 66" fill="#67f5c8" fill-opacity=".12" stroke="#67f5c8" stroke-opacity=".65" stroke-width="3"/>
-  <path d="M34 34h36M34 34v36M206 34h-36M206 34v36" fill="none" stroke="#fff" stroke-opacity=".28" stroke-width="2"/>
+  <circle cx="120" cy="91" r="42" fill="#fffaf1" fill-opacity=".48" stroke="#765a2c" stroke-opacity=".38"/>
+  <path d="M48 213c8-43 34-66 72-66s64 23 72 66" fill="#fffaf1" fill-opacity=".32" stroke="#765a2c" stroke-opacity=".34" stroke-width="3"/>
+  <path d="M34 34h36M34 34v36M206 34h-36M206 34v36" fill="none" stroke="#765a2c" stroke-opacity=".26" stroke-width="2"/>
 </svg>

@@ -10,33 +10,31 @@ interface Props {
 
 const { entry, prominent = false } = Astro.props;
 const visibility = {
-  'closed-source': 'Closed Source',
-  'private-demo': 'Private Demo',
-  'public-preview': 'Public Preview',
+  'closed-source': '闭源产品',
+  'private-demo': '预约演示',
+  'public-preview': '公开预览',
 }[entry.data.visibility];
 ---
 
 <article class:list={['product-card content-card', { prominent }]}>
-  <div class="product-visual" aria-hidden="true">
+  <div class="product-cover">
     {entry.data.cover ? (
       <img src={withBase(entry.data.cover)} alt="" loading="lazy" />
     ) : (
-      <>
-        <div class="visual-orbit orbit-one"></div>
-        <div class="visual-orbit orbit-two"></div>
-        <div class="visual-core">{String(entry.data.priority).padStart(3, '0')}</div>
-      </>
+      <div class="cover-placeholder">
+        <small>Selected product</small>
+        <span>{entry.data.title.slice(0, 1)}</span>
+        <p>{entry.data.tagline}</p>
+      </div>
     )}
-    <span class="visual-label">PRIVATE / PRODUCT</span>
   </div>
+
   <div class="product-content">
-    <div class="product-topline">
-      <span class="status-dot"></span>
+    <div class="product-meta">
       <span>{visibility}</span>
-      <span>·</span>
       <span>{entry.data.status}</span>
+      <span>{entry.data.role}</span>
     </div>
-    <p class="eyebrow">Featured product</p>
     <h3><a href={withBase(`products/${entry.id}/`)}>{entry.data.title}</a></h3>
     <p class="tagline">{entry.data.tagline}</p>
     <p class="summary">{entry.data.summary}</p>
@@ -62,134 +60,90 @@ const visibility = {
 <style>
   .product-card {
     display: grid;
-    grid-template-columns: minmax(16rem, 0.8fr) minmax(0, 1.2fr);
-    min-height: 33rem;
+    grid-template-columns: minmax(15rem, 0.8fr) minmax(0, 1.2fr);
+    min-height: 28rem;
   }
 
-  .product-card.prominent {
-    min-height: 38rem;
-  }
-
-  .product-visual {
-    position: relative;
-    overflow: hidden;
-    min-height: 19rem;
+  .product-cover {
+    min-height: 22rem;
+    padding: var(--space-4);
     border-right: 1px solid var(--color-border);
-    background:
-      radial-gradient(circle at center, rgba(103, 245, 200, 0.18), transparent 32%),
-      linear-gradient(150deg, #121a1a, #090d0f);
+    background: rgba(224, 201, 158, 0.22);
   }
 
-  .product-visual::before,
-  .product-visual::after {
-    position: absolute;
-    content: '';
-  }
-
-  .product-visual img {
+  .product-cover img,
+  .cover-placeholder {
     width: 100%;
     height: 100%;
+    border-radius: calc(var(--radius-lg) - 0.5rem);
     object-fit: cover;
   }
 
-  .product-visual::before {
-    inset: 0;
-    background-image:
-      linear-gradient(rgba(103, 245, 200, 0.09) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(103, 245, 200, 0.09) 1px, transparent 1px);
-    background-size: 36px 36px;
-    mask-image: radial-gradient(circle, black, transparent 72%);
+  .cover-placeholder {
+    display: flex;
+    min-height: 20rem;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: var(--space-5);
+    color: #4c3d28;
+    background:
+      radial-gradient(circle at 80% 15%, rgba(255, 255, 255, 0.48), transparent 10rem),
+      linear-gradient(145deg, #ddc490, #c9a96e);
   }
 
-  .product-visual::after {
-    width: 0.5rem;
-    height: 0.5rem;
-    top: 2rem;
-    right: 2rem;
-    border-radius: 50%;
-    background: var(--color-accent);
-    box-shadow: 0 0 20px var(--color-accent);
+  .cover-placeholder small {
+    font-size: 0.7rem;
+    font-weight: 750;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
   }
 
-  .visual-orbit {
-    position: absolute;
-    inset: 50%;
-    border: 1px solid rgba(103, 245, 200, 0.28);
-    border-radius: 50%;
-    transform: translate(-50%, -50%);
+  .cover-placeholder > span {
+    font-family: var(--font-display);
+    font-size: clamp(6rem, 14vw, 10rem);
+    line-height: 0.8;
+    opacity: 0.28;
   }
 
-  .orbit-one {
-    width: 14rem;
-    height: 14rem;
-  }
-
-  .orbit-two {
-    width: 22rem;
-    height: 22rem;
-    border-style: dashed;
-  }
-
-  .visual-core {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    display: grid;
-    width: 6rem;
-    height: 6rem;
-    place-items: center;
-    border: 1px solid var(--color-accent);
-    border-radius: 50%;
-    color: var(--color-accent);
-    background: rgba(9, 13, 15, 0.8);
-    box-shadow: 0 0 60px rgba(103, 245, 200, 0.16);
-    font-family: var(--font-mono);
-    transform: translate(-50%, -50%);
-  }
-
-  .visual-label {
-    position: absolute;
-    bottom: 1.5rem;
-    left: 1.5rem;
-    color: var(--color-text-faint);
-    font-family: var(--font-mono);
-    font-size: 0.64rem;
-    letter-spacing: 0.15em;
+  .cover-placeholder p {
+    max-width: 18rem;
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 650;
+    line-height: 1.25;
   }
 
   .product-content {
     display: flex;
     min-width: 0;
     flex-direction: column;
-    padding: clamp(1.5rem, 4vw, 3.5rem);
+    justify-content: center;
+    padding: clamp(1.5rem, 4vw, 3rem);
   }
 
-  .product-topline {
+  .product-meta {
     display: flex;
-    gap: var(--space-2);
-    align-items: center;
-    margin-bottom: auto;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-4);
+    margin-bottom: var(--space-5);
     color: var(--color-text-faint);
-    font-family: var(--font-mono);
-    font-size: 0.68rem;
-    text-transform: uppercase;
+    font-size: 0.72rem;
   }
 
-  .status-dot {
-    width: 0.42rem;
-    height: 0.42rem;
-    border-radius: 50%;
-    background: var(--color-accent);
-    box-shadow: 0 0 12px rgba(103, 245, 200, 0.7);
+  .product-meta span:not(:last-child)::after {
+    margin-left: var(--space-4);
+    color: var(--color-accent);
+    content: '•';
   }
 
   h3 {
-    max-width: 12ch;
     margin: 0;
-    font-size: clamp(2.3rem, 5vw, 4.4rem);
-    font-weight: 600;
-    letter-spacing: -0.055em;
-    line-height: 1;
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 4vw, 3.4rem);
+    font-weight: 680;
+    letter-spacing: -0.045em;
+    line-height: 1.05;
   }
 
   h3 a::after {
@@ -200,9 +154,8 @@ const visibility = {
 
   .tagline {
     margin: var(--space-4) 0 0;
-    color: var(--color-text);
-    font-size: 1.12rem;
-    font-weight: 600;
+    color: var(--color-accent-strong);
+    font-weight: 700;
   }
 
   .summary {
@@ -214,13 +167,15 @@ const visibility = {
   .metrics {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: var(--space-3);
+    gap: var(--space-4);
     margin: 0 0 var(--space-6);
+    padding-block: var(--space-4);
+    border-block: 1px solid var(--color-border);
   }
 
-  .metrics div {
-    padding-top: var(--space-3);
-    border-top: 1px solid var(--color-border);
+  .metrics div + div {
+    padding-left: var(--space-4);
+    border-left: 1px solid var(--color-border);
   }
 
   dt {
@@ -230,8 +185,9 @@ const visibility = {
 
   dd {
     margin: 0.15rem 0 0;
-    font-family: var(--font-mono);
-    font-size: 0.82rem;
+    color: var(--color-text);
+    font-size: 0.86rem;
+    font-weight: 700;
   }
 
   .product-footer {
@@ -245,9 +201,9 @@ const visibility = {
     position: relative;
     z-index: 1;
     flex: none;
-    color: var(--color-accent);
-    font-size: 0.85rem;
-    font-weight: 650;
+    color: var(--color-accent-strong);
+    font-size: 0.84rem;
+    font-weight: 750;
   }
 
   @media (max-width: 820px) {
@@ -256,17 +212,14 @@ const visibility = {
       min-height: auto;
     }
 
-    .product-card.prominent {
-      min-height: auto;
-    }
-
-    .product-visual {
+    .product-cover {
+      min-height: 18rem;
       border-right: 0;
       border-bottom: 1px solid var(--color-border);
     }
 
-    .product-topline {
-      margin-bottom: var(--space-7);
+    .cover-placeholder {
+      min-height: 17rem;
     }
 
     .product-footer {
@@ -278,6 +231,12 @@ const visibility = {
   @media (max-width: 480px) {
     .metrics {
       grid-template-columns: 1fr;
+    }
+
+    .metrics div + div {
+      padding: var(--space-3) 0 0;
+      border-top: 1px solid var(--color-border);
+      border-left: 0;
     }
   }
 </style>
