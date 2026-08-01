@@ -5,7 +5,7 @@ export const site = {
   location: 'China',
   status: '正在构建有真实价值的产品',
   description:
-    '我关注软件、硬件与真实需求之间的连接，擅长把模糊问题拆解成可以验证、可以交付的系统。',
+    '',
   email: '2298983695@qq.com',
   avatar: '/avatar.jpg',
   resume: '/resume.pdf',
@@ -17,7 +17,7 @@ export const site = {
     url: 'https://github.com/JaneNSea/BLE',
     api: 'https://api.github.com/repos/JaneNSea/BLE',
   },
-  capabilities: ['系统设计', '全栈开发', '嵌入式 / IoT', '产品思维', '独立交付'],
+  capabilities: ['系统设计', '全栈开发', 'OpenHarmony开发', '产品设计', 'Agent开发','Arkts开发'],
 } as const;
 
 export const navigation = [
