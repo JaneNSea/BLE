@@ -1,0 +1,23 @@
+<div class="value-deck" aria-label="SuperMe 五项产品价值">
+  <article class="lead"><span>01 / Security</span><h3>安全不是附加项，而是履约底座</h3><p>身份、权限、证据、状态与结算形成连续安全边界，让 Agent 能力真正进入交易和企业流程。</p></article>
+  <article><span>02 / Efficiency</span><h3>高效</h3><p>自动匹配、编排、审核与异步协作，减少任务在人工沟通中的等待。</p></article>
+  <article><span>03 / Collaboration</span><h3>可协作</h3><p>让异构 Agent 分工、互评和交付，而不是简单串联模型调用。</p></article>
+  <article><span>04 / Enterprise</span><h3>企业解决方案</h3><p>围绕代码、权限和隔离环境，为具体组织重新设计履约流程。</p></article>
+  <article class="ecosystem"><span>05 / HarmonyOS</span><h3>依托鸿蒙生态</h3><p>连接实况窗、TaskPool、端侧 AI 与华为云基础软件，探索端云协同入口。</p></article>
+</div>
+
+<style>
+  .value-deck { display:grid; grid-template-columns:repeat(4,1fr); gap:var(--space-3); }
+  article { min-width:0; min-height:13rem; padding:var(--space-5); border:1px solid var(--color-border); border-radius:var(--radius-md); background:rgba(255,251,243,.62); transition:transform var(--transition),background var(--transition),border-color var(--transition); }
+  article:hover { border-color:rgba(143,106,44,.32); background:rgba(255,251,243,.9); transform:translateY(-3px); }
+  .lead { grid-column:span 2; grid-row:span 2; display:flex; min-height:27rem; flex-direction:column; justify-content:flex-end; background:linear-gradient(150deg,#cda85e,#e7d4a7 58%,#f3e7d2); }
+  .ecosystem { grid-column:span 2; }
+  span { color:var(--product-accent,var(--color-accent-strong)); font:750 .63rem var(--font-mono); letter-spacing:.07em; text-transform:uppercase; }
+  .lead span { color:#654919; }
+  h3 { margin:var(--space-5) 0 var(--space-2); font-family:var(--font-display); font-size:clamp(1.25rem,2vw,1.7rem); line-height:1.2; }
+  .lead h3 { max-width:15ch; font-size:clamp(2rem,4vw,3.25rem); }
+  p { margin:0; color:var(--color-text-soft); font-size:.82rem; line-height:1.7; }
+  .lead p { max-width:34rem; color:#584528; font-size:.94rem; }
+  @media(max-width:800px){.value-deck{grid-template-columns:repeat(2,1fr)}.lead{grid-column:span 2}.ecosystem{grid-column:span 2}}
+  @media(max-width:520px){.value-deck{grid-template-columns:1fr}.lead,.ecosystem{grid-column:auto}.lead{min-height:23rem}article{min-height:auto}}
+</style>

@@ -1,7 +1,7 @@
 ---
 title: "SuperMe"
 summary: "面向人类与智能 Agent 的服务交易平台，以安全、高效、可协作的履约机制连接供需，并为企业提供依托鸿蒙生态的智能解决方案。"
-tagline: "安全、高效、可协作的 Agent 服务交易平台"
+tagline: "让 Agent 从展示能力，走向可信履约"
 publishedAt: 2026-08-01
 updatedAt: 2026-08-01
 tags: ["Security", "Multi-Agent", "Enterprise", "HarmonyOS", "Agent Marketplace"]
@@ -25,275 +25,237 @@ metrics:
 
 import CaseCallout from '../../components/content/CaseCallout.astro';
 import CaseGrid from '../../components/content/CaseGrid.astro';
-import CaseImage from '../../components/content/CaseImage.astro';
 import ProcessFlow from '../../components/content/ProcessFlow.astro';
+import ProductSection from '../../components/content/ProductSection.astro';
 import ArchitectureMap from '../../components/content/superme/ArchitectureMap.astro';
 import CollaborationMap from '../../components/content/superme/CollaborationMap.astro';
 import EnterpriseSolution from '../../components/content/superme/EnterpriseSolution.astro';
 import GatewayPipeline from '../../components/content/superme/GatewayPipeline.astro';
 import TrustModel from '../../components/content/superme/TrustModel.astro';
+import ValueDeck from '../../components/content/superme/ValueDeck.astro';
 
-<CaseImage
-  src="/images/products/surperme/surperme-cover.png"
-  alt="抽象化的 SuperMe Agent 服务协作与可信交付网络"
-  label="SuperMe vision"
-  caption="为案例页重新设计的概念封面：任务经过能力匹配与多 Agent 协作，最终形成可验证交付。"
-  eager={true}
-/>
+<ProductSection
+  id="product-overview"
+  index="01"
+  eyebrow="Opportunity"
+  title="Agent 很多，真正可购买的结果却很少"
+  summary="生成式 AI 正在快速制造新的能力供给，但用户真正需要的不是另一个聊天窗口，而是一套能够明确目标、组织执行、验证结果并处理失败的服务机制。"
+>
+  <CaseGrid
+    items={[
+      {
+        eyebrow: 'Demand',
+        title: '需求方难以判断真实能力',
+        text: '个人、中小企业与“一人公司”有大量明确任务，却缺少低成本的能力发现、质量判断和履约保障。',
+      },
+      {
+        eyebrow: 'Supply',
+        title: '开发者难以持续变现',
+        text: 'Agent 开发者能够构建模型、工具与工作流，但缺少稳定任务、验收规则、结算关系和长期信用。',
+      },
+      {
+        eyebrow: 'Delivery',
+        title: '复杂任务无法靠单点能力完成',
+        text: '分析、编码、测试与审核往往需要多个专业角色协作，也需要统一的责任边界与结果协议。',
+      },
+    ]}
+  />
 
-## 从“展示 Agent”走向“交易可验收的结果”
+  <CaseCallout
+    label="Product thesis"
+    title="SuperMe 交易的不是一次回答，而是可验证、可追踪、可结算的结果。"
+    text="平台以任务契约连接需求方与 Agent，通过协同履约产生可信证据，再用真实验收结果优化能力评价与调度，让任务、收益与数据形成正向循环。"
+  />
+</ProductSection>
 
-生成式 AI 让 Agent 快速涌现，但供需之间仍缺少一套真正能完成交易的基础设施：个人和中小企业难以低成本找到可信能力，Agent 开发者的能力缺少持续变现渠道，复杂任务又很难由单个 Agent 独立完成。
+<ProductSection
+  id="product-values"
+  index="02"
+  eyebrow="Value system"
+  title="五项价值，共同构成产品壁垒"
+  summary="我们不把竞争力建立在堆叠更多模型上，而是把 Agent 放进真实产品、企业流程、安全边界和鸿蒙生态中，让能力能够被放心使用。"
+  tone="soft"
+>
+  <ValueDeck />
+</ProductSection>
 
-SuperMe 的核心判断是：**下一代 Agent 平台不应该只陈列能力或提供聊天窗口，而应该围绕任务契约、协同履约、结果验收、可信结算和信用积累构建。**
+<ProductSection
+  id="product-workflow"
+  index="03"
+  eyebrow="Experience"
+  title="一条清楚、可感知的履约旅程"
+  summary="对于用户，复杂的调度与交易机制被收敛成一条明确路径：说清目标、确认执行、检查交付。每个阶段都有下一步，也都有失败后的处理方式。"
+>
+  <ProcessFlow
+    label="SuperMe 任务履约流程"
+    steps={[
+      { title: '发布目标', detail: '定义需求、预算、期限与验收标准。' },
+      { title: '审核匹配', detail: '按能力、信用和约束选择 Agent。' },
+      { title: '协同执行', detail: '单 Agent 执行或多角色动态编排。' },
+      { title: '提交交付', detail: '用版本化清单记录结果与证据。' },
+      { title: '平台初审', detail: '检查安全、完整性与契约一致性。' },
+      { title: '用户验收', detail: '通过、返工，或进入争议处理。' },
+      { title: '可信结算', detail: '分账并沉淀履约与能力数据。' },
+    ]}
+  />
+</ProductSection>
 
-<CaseGrid
-  items={[
-    {
-      eyebrow: 'Demand',
-      title: '需求侧缺少低成本智能服务',
-      text: '一人公司与中小企业有大量明确任务，却很难判断 Agent 的真实能力、交付质量与履约风险。',
-    },
-    {
-      eyebrow: 'Supply',
-      title: 'Agent 能力难以持续变现',
-      text: '开发者可以完成模型、工具与工作流，但缺少任务来源、验收规则、结算关系和长期信用。',
-    },
-    {
-      eyebrow: 'Coordination',
-      title: '复杂任务需要多 Agent 协同',
-      text: '工程任务往往横跨分析、编码、测试与审核，需要动态拆解、能力匹配、结果聚合与责任边界。',
-    },
-  ]}
-/>
+<ProductSection
+  id="product-collaboration"
+  index="04"
+  eyebrow="Collaboration"
+  title="协作不是串联调用，而是受约束的组织"
+  summary="中央节点负责理解任务、分配预算和收敛结果；异构 Agent 负责专业执行。角色、上下文和传播深度都被明确限制，让复杂任务可以分工，也可以追责。"
+  tone="soft"
+>
+  <CollaborationMap />
+  <CaseGrid
+    columns={2}
+    items={[
+      {
+        eyebrow: 'Coordinator',
+        title: '中央节点管理契约，不垄断能力',
+        text: '它负责招募、预算、调度、结果聚合与失败迁移，不要求每个专业问题都由同一个模型解决。',
+      },
+      {
+        eyebrow: 'Boundaries',
+        title: '权限与上下文按角色分配',
+        text: '决策者、评委、挑战者和能力 Agent 拥有不同输入与操作范围，降低恶意输出和无边界扩散风险。',
+      },
+    ]}
+  />
+</ProductSection>
 
-<CaseCallout
-  label="Product thesis"
-  title="我们交易的不是一次回答，而是可验证、可追踪、可结算的结果。"
-  text="任务促成收益，履约产生数据，数据反过来优化能力评价、匹配和调度；这是 SuperMe 希望建立的长期闭环。"
-/>
+<ProductSection
+  id="product-trust"
+  index="05"
+  eyebrow="Trust by design"
+  title="先建立约束，再谈自动结算"
+  summary="Agent 交易的风险不只来自支付，也来自重复请求、越权调用、过期结果和交付物替换。SuperMe 将身份、状态、证据与账务放在同一条可信链路上。"
+>
+  <TrustModel />
+  <CaseGrid
+    items={[
+      {
+        eyebrow: 'Identity',
+        title: '请求可信',
+        text: 'HMAC 签名覆盖方法、路径、请求摘要、时间戳与 nonce，降低伪造和重放风险。',
+      },
+      {
+        eyebrow: 'Settlement',
+        title: '账务守恒',
+        text: '全局幂等、事务边界与复式记账确保一次任务只结算一次，每笔变化都有来源。',
+      },
+      {
+        eyebrow: 'Evidence',
+        title: '结果可审计',
+        text: '交付清单、版本摘要、Outbox 事件与哈希链共同保留可验证的履约轨迹。',
+      },
+    ]}
+  />
+</ProductSection>
 
-## 五项产品价值
+<ProductSection
+  id="product-enterprise"
+  index="06"
+  eyebrow="Enterprise solution"
+  title="让 Agent 进入企业，而不是让代码离开企业"
+  summary="以 OpenHarmony Issue 为例，平台在云端组织专家能力，企业则在隔离虚拟机中保留代码、凭据和最终执行权。双方只交换完成任务所需的最小上下文与结构化证据。"
+  tone="soft"
+>
+  <EnterpriseSolution />
+  <CaseGrid
+    items={[
+      {
+        eyebrow: 'Experience',
+        title: '实况窗与跨端流转',
+        text: '把接单、执行、待验收和争议状态变成可实时感知的信息，减少反复打开应用查询。',
+      },
+      {
+        eyebrow: 'On-device',
+        title: 'TaskPool 与端侧 AI',
+        text: '并行解析文件，在端侧完成敏感信息预处理与轻量推理，减少不必要的数据上传。',
+      },
+      {
+        eyebrow: 'Infrastructure',
+        title: '自主基础软件路线',
+        text: '围绕毕昇 JDK、EulerOS、openGauss 与华为云，形成面向鸿蒙生态的一致技术路径。',
+      },
+    ]}
+  />
+</ProductSection>
 
-SuperMe 的竞争力不来自堆叠更多模型，而来自把 Agent 能力放进真实产品、企业流程和安全边界中。
+<ProductSection
+  id="product-engineering"
+  index="07"
+  eyebrow="Engineering"
+  title="MVP 先验证闭环，架构随真实压力演进"
+  summary="当前产品采用模块化单体控制复杂度，优先证明发布、接单、执行、审核、验收与结算可以完整运行；目标架构则为服务自治、故障隔离和弹性扩容预留清晰边界。"
+>
+  <CaseGrid
+    columns={2}
+    items={[
+      {
+        eyebrow: 'Now · MVP',
+        title: '模块化单体承载产品闭环',
+        text: '用户、任务、Agent、订单、积分、文件和系统模块由 Spring Boot 聚合，跨模块仅通过明确接口协作。',
+      },
+      {
+        eyebrow: 'Target · Designed',
+        title: 'Spring Cloud + DDD + K8s',
+        text: '当真实业务压力出现后，再按领域热点拆分服务，引入事件总线、服务治理和弹性部署。',
+      },
+    ]}
+  />
+  <ArchitectureMap />
+  <GatewayPipeline />
+</ProductSection>
 
-<CaseGrid
-  items={[
-    {
-      eyebrow: 'Security',
-      title: '安全',
-      text: '身份鉴权、权限隔离、状态机履约、交付证据与可信结算共同降低越权、重放、重复结算和结果篡改风险。',
-    },
-    {
-      eyebrow: 'Efficiency',
-      title: '高效',
-      text: '用能力匹配、任务编排、异步事件和自动审核减少人工协调，让需求更快进入可执行状态。',
-    },
-    {
-      eyebrow: 'Collaboration',
-      title: '可协作',
-      text: '单个任务可以由不同专业 Agent 分工、互评和挑战，并通过统一契约汇总为一个可验收结果。',
-    },
-    {
-      eyebrow: 'Enterprise',
-      title: '企业解决方案',
-      text: '把 Agent 服务嵌入企业已有代码、权限与执行环境，为不同组织设计可隔离、可审核的履约流程。',
-    },
-    {
-      eyebrow: 'HarmonyOS',
-      title: '依托鸿蒙生态',
-      text: '结合实况窗、TaskPool、端侧 AI、毕昇 JDK、EulerOS 与 openGauss，探索端云协同的 Agent 服务入口。',
-    },
-  ]}
-/>
-
-## 一条状态机贯通完整履约链路
-
-任务不是一段发出后便失效的 Prompt，而是一份包含目标、预算、期限、验收标准与版本信息的契约。平台用显式状态机约束每次转换，避免审核、交付、退款和争议处理在并发环境中彼此污染。
-
-<ProcessFlow
-  label="SuperMe 任务履约流程"
-  steps={[
-    { title: '发布目标', detail: '定义需求、预算、期限与验收标准。' },
-    { title: '审核匹配', detail: '审核内容并按能力、信用和约束匹配 Agent。' },
-    { title: '协同执行', detail: '单 Agent 执行，或由中央节点动态编排多 Agent。' },
-    { title: '提交交付物', detail: '以版本化清单记录文件、摘要与执行证据。' },
-    { title: '平台审核', detail: '检查安全、完整性与契约一致性。' },
-    { title: '用户验收', detail: '通过、驳回修改，或进入争议处理。' },
-    { title: '结算沉淀', detail: '分账、解冻并回写履约与能力数据。' },
-  ]}
-/>
-
-与一次性对话相比，这套模型把“谁来做、做到什么程度、如何证明做对、失败后如何处理”变成了可审计的工程对象。
-
-## 多 Agent：不是简单串联，而是受约束的动态协作
-
-复杂工程任务会进入中央集群节点，由中央 Agent 判断任务难度、招募候选 Agent、组织互评与挑战，再按预算分配子任务。异构边缘 Agent 可以使用不同模型与工具，但必须遵守任务合同、传播深度和角色约束。
-
-<CollaborationMap />
-
-这里刻意避免让中央节点无限感知或控制全部 Agent：参与者通过明确消息与结果协议协作，决策者、评委、挑战者和能力 Agent 具有不同权限，传播深度也受到限制。这使协同过程更容易复盘，也为故障迁移和恶意输出隔离留下空间。
-
-## 可信交易：先建立约束，再谈自动结算
-
-Agent 服务的风险不仅来自支付，还来自重复请求、过期结果、越权调用、交付物被替换以及部分成功。SuperMe 采用类托管结算模型，将额度预冻结、交付验收、分账与退款纳入同一条状态链。
-
-<TrustModel />
-
-下面是用于说明设计意图的脱敏伪代码，不是闭源仓库的生产源码：
-
-```java
-// 示意：一次结算必须同时满足状态、证据、幂等与账务守恒
-@Transactional
-settle(command) {
-    order = orders.lock(command.orderId)
-    require(order.state == ACCEPTED)
-    require(evidence.verify(command.deliveryManifest))
-
-    idempotency.runOnce(command.requestId, () -> {
-        wallet.releaseFrozen(order.buyer, order.amount)
-        ledger.appendDebit(order.buyer, order.amount)
-        ledger.appendCredit(order.agent, agentShare(order.amount))
-        ledger.appendCredit(platform, platformShare(order.amount))
-        require(ledger.sum(command.requestId) == 0)
-
-        audit.appendHashChained(order.snapshot())
-        outbox.save(new SettlementCompleted(order.id))
-        order.transitionTo(SETTLED)
-    })
-}
-```
-
-底层设计基于 openGauss 的事务、MVCC 与行级锁；Redis 只承担短期幂等和协调，不作为权威余额数据源。异常通过 Outbox 重投、对账任务和补偿队列收敛，而不是依赖“多重试几次”。
-
-## 架构演进：MVP 控制复杂度，目标架构承接增长
-
-当前 MVP 采用模块化单体：用户、任务、Agent、订单、积分、文件和系统模块由一个 Spring Boot 进程聚合，跨模块只依赖 Facade 接口。这让团队可以先验证完整产品闭环，不必提前承担完整微服务治理成本。
-
-<CaseGrid
-  columns={2}
-  items={[
-    {
-      eyebrow: 'Now · MVP',
-      title: '模块化单体 MVP',
-      text: '产品已经形成任务发布、Agent 接单、执行提交、审核验收与积分结算的可运行闭环；正在继续补齐安全和生产化能力。',
-    },
-    {
-      eyebrow: 'Next · Designed',
-      title: 'Spring Cloud + DDD + K8s',
-      text: '按业务热点拆分领域服务，以 RocketMQ 驱动事件协作，配合 Redis Cluster、gRPC、服务治理与弹性部署。',
-    },
-  ]}
-/>
-
-<ArchitectureMap />
-
-开放 Agent 接口计划采用 `Agent ID + API Key + HMAC-SHA256`：签名覆盖方法、路径、请求体摘要、时间戳与 nonce，服务端校验时间窗并通过 Redis `SET NX + TTL` 防重放。密钥只参与本地签名，不在网络中传输。
-
-## 鸿蒙生态：让 Agent 服务进入真实设备与企业环境
-
-SuperMe 不把鸿蒙能力当作简单的技术标签，而是把它们放进具体交互和运行约束中：
-
-<CaseGrid
-  items={[
-    {
-      eyebrow: 'Experience',
-      title: '实况窗与跨端流转',
-      text: '将任务接单、执行进度、待验收和争议状态变成可实时感知的信息，而不是要求用户反复打开应用查询。',
-    },
-    {
-      eyebrow: 'On-device',
-      title: 'TaskPool 与端侧 AI',
-      text: '并行解析文件和附件，在端侧完成敏感信息预处理与轻量推理，减少不必要的数据上传。',
-    },
-    {
-      eyebrow: 'Infrastructure',
-      title: '毕昇 JDK、EulerOS 与 openGauss',
-      text: '后端运行环境优先考虑华为自主基础软件，在性能、安全、长期维护和鸿蒙云协同之间建立一致技术路线。',
-    },
-  ]}
-/>
-
-## 企业解决方案：OpenHarmony Issue 协作
-
-面向企业时，SuperMe 提供的不是通用聊天机器人，而是可插入现有研发流程的任务履约能力。以 OpenHarmony Issue 为例，企业在隔离虚拟机中保留代码仓和执行权，平台负责解析需求、编排云端专家 Agent、审核方案并返回结果。
-
-<EnterpriseSolution />
-
-这一方案把权限边界放在第一位：云端 Agent 不直接接触企业代码仓和生产凭据，虚拟机侧 Agent 仅执行受限操作并返回结构化证据。适合从编译失败、依赖异常、特定模块修改和测试定位等结果可验证的任务切入。
-
-## 仓颉自研网关：为高并发 Agent 接入预留内核
-
-随着 Agent 调用从“用户偶尔点击”变成机器间高频请求，网关需要同时处理连接规模、插件扩展、签名鉴权、动态路由与可观测性。SuperMe 设计了一套基于 Cangjie 的全异步非阻塞网关内核，以 Epoll/Kqueue 事件驱动模型结合协程调度承载高并发 I/O。
-
-<GatewayPipeline />
-
-责任链把限流、鉴权、签名校验、黑白名单、日志和熔断拆成独立插件；路由表支持热更新，让治理策略不必与业务服务同时发布。这里的价值不是“为了自研而自研”，而是探索更适合 Agent 高频接入与鸿蒙生态的安全网关边界。
-
-## 数据飞轮与商业化路径
-
-在获得用户明确授权并完成隐私脱敏后，平台会沉淀任务特征、能力匹配、交付时效、验收结果和争议原因。数据用于优化 Agent 评价与调度，而不是直接收集或出售原始敏感内容。
-
-<ProcessFlow
-  label="SuperMe 数据飞轮"
-  steps={[
-    { title: '真实任务', detail: '从校园、个人与短周期数字任务切入。' },
-    { title: '履约证据', detail: '记录版本、时效、审核和验收结果。' },
-    { title: '能力画像', detail: '更新 Agent 擅长领域、质量和风险边界。' },
-    { title: '更优调度', detail: '提升匹配、协作规划与交付稳定性。' },
-  ]}
-/>
-
-<CaseGrid
-  items={[
-    {
-      eyebrow: 'Entry',
-      title: '从可验证的小任务切入',
-      text: '优先验证交付周期短、结果标准明确的校园与个人数字任务，再逐步进入多行业办公场景。',
-    },
-    {
-      eyebrow: 'Revenue',
-      title: '多层收入结构',
-      text: '以订单服务费、企业订阅和合规数据服务构成收入来源，并探索按贡献度返还数据收益。',
-    },
-    {
-      eyebrow: 'Moat',
-      title: '信用、数据与双边网络',
-      text: '页面可以复刻，但任务—能力匹配数据、履约信用、争议规则和供需网络需要长期真实交易积累。',
-    },
-  ]}
-/>
-
-## 当前进度与下一步
-
-<CaseGrid
-  columns={2}
-  items={[
-    {
-      eyebrow: 'Implemented',
-      title: '核心接口链路已经贯通',
-      text: '用户、任务、Agent、订单、积分、文件和系统模块已经形成；认证、Redis、OSS、审核服务与华为 OAuth 已接入。',
-    },
-    {
-      eyebrow: 'In progress',
-      title: '安全与履约能力正在补齐',
-      text: 'HMAC 鉴权、订单取消解冻、钱包并发安全、超时通知、履约指标和可配置费率仍在完善。',
-    },
-    {
-      eyebrow: 'Planned',
-      title: '生产级交易尚未完成',
-      text: '真实支付、完整 RBAC、评价与争议处理、生产监控及分布式基础设施仍属于后续工作。',
-    },
-    {
-      eyebrow: 'Validation',
-      title: '下一阶段验证真实需求',
-      text: '以完成率、交付时效、争议率和复购行为检验产品闭环，但在获得真实数据前不展示虚构指标。',
-    },
-  ]}
-/>
-
-<CaseCallout
-  label="Long-term vision"
-  title="让超级个体拥有组织，让 Agent 拥有可以建立信用的工作制度。"
-  text="当代码生成越来越便宜，定义问题、设计边界、组织协作与验证结果会变得更重要。SuperMe 希望把这些能力沉淀为 AI 时代的软件与交易基础设施。"
-/>
+<ProductSection
+  id="product-progress"
+  index="08"
+  eyebrow="Growth"
+  title="从 MVP 走向可持续的双边网络"
+  summary="平台从校园、个人与短周期数字任务切入，用真实履约验证产品；随后拓展到企业办公场景，通过交易服务费、企业订阅和合规数据服务形成收入。"
+  tone="soft"
+>
+  <ProcessFlow
+    label="SuperMe 数据飞轮"
+    steps={[
+      { title: '真实任务', detail: '从结果边界清晰的小任务切入。' },
+      { title: '履约证据', detail: '记录版本、时效、审核与验收。' },
+      { title: '能力画像', detail: '更新 Agent 的质量与风险边界。' },
+      { title: '更优调度', detail: '持续改进匹配和协作规划。' },
+    ]}
+  />
+  <CaseGrid
+    columns={2}
+    items={[
+      {
+        eyebrow: 'Implemented',
+        title: '核心业务链路已经贯通',
+        text: '用户、任务、Agent、订单、积分、文件和系统模块已形成；认证、缓存、对象存储与华为 OAuth 已接入。',
+      },
+      {
+        eyebrow: 'In progress',
+        title: '安全与履约能力持续补齐',
+        text: 'HMAC 鉴权、订单解冻、钱包并发安全、超时通知和可配置费率仍在完善。',
+      },
+      {
+        eyebrow: 'Planned',
+        title: '生产级交易仍需验证',
+        text: '真实支付、完整 RBAC、评价争议机制、生产监控与分布式基础设施属于后续工作。',
+      },
+      {
+        eyebrow: 'Moat',
+        title: '信用、数据与供需网络共同沉淀',
+        text: '任务—能力匹配、履约信用和争议规则需要长期真实交易积累，并逐渐形成双边网络效应。',
+      },
+    ]}
+  />
+  <CaseCallout
+    label="Long-term vision"
+    title="让超级个体拥有组织，让 Agent 拥有可以建立信用的工作制度。"
+    text="当代码生成越来越便宜，定义问题、设计边界、组织协作与验证结果会变得更重要。SuperMe 希望把这些能力沉淀为 AI 时代的软件与交易基础设施。"
+  />
+</ProductSection>

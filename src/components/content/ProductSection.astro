@@ -1,0 +1,89 @@
+---
+interface Props {
+  id: string;
+  index: string;
+  eyebrow: string;
+  title: string;
+  summary: string;
+  tone?: 'plain' | 'soft';
+}
+
+const { id, index, eyebrow, title, summary, tone = 'plain' } = Astro.props;
+---
+
+<section class:list={['product-section', `tone-${tone}`]} id={id}>
+  <header>
+    <div class="section-index"><span>{index}</span><small>{eyebrow}</small></div>
+    <h2>{title}</h2>
+    <p>{summary}</p>
+  </header>
+  <div class="section-body"><slot /></div>
+</section>
+
+<style>
+  .product-section {
+    padding-block: clamp(4.5rem, 9vw, 8rem);
+    border-top: 1px solid var(--color-border);
+    scroll-margin-top: 5rem;
+  }
+
+  .product-section:first-child { padding-top: var(--space-7); border-top: 0; }
+
+  .tone-soft {
+    position: relative;
+    padding-inline: clamp(1rem, 4vw, 3rem);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: linear-gradient(145deg, rgba(255, 251, 243, 0.74), rgba(232, 219, 194, 0.32));
+  }
+
+  header {
+    display: grid;
+    grid-template-columns: 7rem minmax(24rem, 1.15fr) minmax(18rem, 0.85fr);
+    gap: clamp(1.5rem, 3vw, 2.5rem);
+    align-items: start;
+  }
+
+  .section-index span,
+  .section-index small { display: block; }
+  .section-index span { color: var(--product-accent, var(--color-accent-strong)); font: 700 1.2rem var(--font-mono); }
+  .section-index small { margin-top: var(--space-2); color: var(--color-text-faint); font: 700 0.62rem var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; }
+
+  h2 {
+    margin: 0;
+    color: var(--product-ink, var(--color-text));
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 4vw, 3.2rem);
+    font-weight: 650;
+    letter-spacing: -0.045em;
+    line-height: 1.08;
+    overflow-wrap: anywhere;
+  }
+
+  header p {
+    max-width: 34rem;
+    margin: 0;
+    color: var(--color-text-soft);
+    font-size: clamp(0.94rem, 1.6vw, 1.08rem);
+    line-height: 1.8;
+  }
+
+  .section-body { margin-top: clamp(2.5rem, 6vw, 5rem); }
+  .section-body :global(> p) { max-width: 56rem; margin: var(--space-5) 0; }
+
+  @media (max-width: 900px) {
+    header { grid-template-columns: 5rem 1fr; }
+    header p { grid-column: 2; }
+  }
+
+  @media (max-width: 560px) {
+    .product-section { padding-block: var(--space-8); }
+    .product-section:first-child { padding-top: var(--space-7); }
+    .tone-soft { padding-inline: var(--space-4); }
+    header { grid-template-columns: 1fr; gap: var(--space-4); }
+    h2 { font-size: 1.85rem; line-height: 1.12; }
+    header p { grid-column: auto; }
+    .section-index { display: flex; gap: var(--space-3); align-items: baseline; }
+    .section-index small { margin: 0; }
+  }
+</style>

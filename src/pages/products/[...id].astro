@@ -1,6 +1,6 @@
 ---
 import { getCollection, render, type CollectionEntry } from 'astro:content';
-import ContentLayout from '../../layouts/ContentLayout.astro';
+import ProductLayout from '../../layouts/ProductLayout.astro';
 import { isPublished } from '../../utils/content';
 
 export async function getStaticPaths() {
@@ -29,61 +29,22 @@ const status = {
 }[entry.data.status];
 ---
 
-<ContentLayout
-  eyebrow="Product case study"
+<ProductLayout
   title={entry.data.title}
+  tagline={entry.data.tagline}
   summary={entry.data.summary}
-  publishedAt={entry.data.publishedAt}
-  updatedAt={entry.data.updatedAt}
+  cover={entry.data.cover}
+  coverAlt={`${entry.data.title} 产品概念视觉`}
   tags={entry.data.tags}
+  metrics={entry.data.metrics}
   backHref="/products/"
   backLabel="返回产品列表"
-  status={`${visibility} · ${status} · ${entry.data.role}`}
+  status={`${status} · ${visibility}`}
 >
-  {entry.data.metrics.length > 0 && (
-    <dl class="case-metrics">
-      {entry.data.metrics.map((metric) => (
-        <div><dt>{metric.label}</dt><dd>{metric.value}</dd></div>
-      ))}
-    </dl>
-  )}
   <Content />
   {entry.data.demo && (
     <div class="button-row">
       <a class="button button--primary" href={entry.data.demo}>{entry.data.ctaLabel} ↗</a>
     </div>
   )}
-</ContentLayout>
-
-<style>
-  .case-metrics {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: var(--space-3);
-    margin: 0 0 var(--space-7);
-  }
-
-  .case-metrics div {
-    padding: var(--space-4);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    background: var(--color-surface);
-  }
-
-  .case-metrics dt {
-    color: var(--color-text-faint);
-    font-size: 0.68rem;
-  }
-
-  .case-metrics dd {
-    margin: var(--space-1) 0 0;
-    color: var(--color-accent);
-    font-family: var(--font-mono);
-  }
-
-  @media (max-width: 560px) {
-    .case-metrics {
-      grid-template-columns: 1fr;
-    }
-  }
-</style>
+</ProductLayout>
