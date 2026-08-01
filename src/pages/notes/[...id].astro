@@ -1,0 +1,31 @@
+---
+import { getCollection, render, type CollectionEntry } from 'astro:content';
+import ContentLayout from '../../layouts/ContentLayout.astro';
+import { isPublished } from '../../utils/content';
+
+export async function getStaticPaths() {
+  const entries = (await getCollection('notes')).filter(isPublished);
+  return entries.map((entry) => ({ params: { id: entry.id }, props: { entry } }));
+}
+
+interface Props {
+  entry: CollectionEntry<'notes'>;
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+---
+
+<ContentLayout
+  eyebrow="Engineering note"
+  title={entry.data.title}
+  summary={entry.data.summary}
+  publishedAt={entry.data.publishedAt}
+  updatedAt={entry.data.updatedAt}
+  tags={entry.data.tags}
+  backHref="/notes/"
+  backLabel="返回技术笔记"
+  status={entry.data.readingMinutes ? `${entry.data.readingMinutes} 分钟阅读` : undefined}
+>
+  <Content />
+</ContentLayout>

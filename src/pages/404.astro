@@ -1,0 +1,23 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { withBase } from '../utils/url';
+---
+
+<BaseLayout title="页面未找到" noIndex>
+  <section class="not-found shell">
+    <p class="eyebrow">Error / 404</p>
+    <h1 class="display-title">这条路径<br />还没有内容。</h1>
+    <p class="lede">可能是链接已经移动，也可能是内容仍在草稿箱里。</p>
+    <div class="button-row">
+      <a class="button button--primary" href={withBase('')}>返回首页</a>
+      <a class="button" href={withBase('notes/')}>阅读技术笔记</a>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .not-found {
+    min-height: 70vh;
+    padding-block: var(--space-9);
+  }
+</style>

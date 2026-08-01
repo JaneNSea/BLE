@@ -1,0 +1,134 @@
+---
+import { navigation, site } from '../../data/site';
+import { withBase } from '../../utils/url';
+
+const currentPath = Astro.url.pathname;
+---
+
+<header class="site-header">
+  <div class="header-inner shell">
+    <a class="brand" href={withBase('')} aria-label={`${site.name} 首页`}>
+      <span class="brand-mark">{site.initials}</span>
+      <span class="brand-name">{site.name}</span>
+    </a>
+
+    <nav aria-label="主导航">
+      <ul class="nav-list">
+        {navigation.map((item) => (
+          <li>
+            <a
+              class:list={['nav-link', { active: currentPath.includes(item.href) }]}
+              href={withBase(item.href)}
+              aria-current={currentPath.includes(item.href) ? 'page' : undefined}
+            >
+              {item.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+
+    <a class="header-contact" href={`mailto:${site.email}`}>联系我 ↗</a>
+  </div>
+</header>
+
+<style>
+  .site-header {
+    position: sticky;
+    z-index: 20;
+    top: 0;
+    border-bottom: 1px solid var(--color-border);
+    background: rgba(9, 12, 13, 0.78);
+    backdrop-filter: blur(18px);
+  }
+
+  .header-inner {
+    display: grid;
+    min-height: 4.5rem;
+    grid-template-columns: 1fr auto 1fr;
+    gap: var(--space-5);
+    align-items: center;
+  }
+
+  .brand {
+    display: inline-flex;
+    width: max-content;
+    align-items: center;
+    gap: var(--space-3);
+    font-weight: 700;
+  }
+
+  .brand-mark {
+    display: grid;
+    width: 2rem;
+    height: 2rem;
+    place-items: center;
+    border: 1px solid rgba(103, 245, 200, 0.45);
+    border-radius: 50%;
+    color: var(--color-accent);
+    background: var(--color-accent-soft);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+  }
+
+  .brand-name {
+    font-size: 0.88rem;
+  }
+
+  .nav-list {
+    display: flex;
+    gap: var(--space-1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .nav-link {
+    display: block;
+    padding: 0.5rem 0.72rem;
+    border-radius: 999px;
+    color: var(--color-text-soft);
+    font-size: 0.84rem;
+    transition: color var(--transition), background var(--transition);
+  }
+
+  .nav-link:hover,
+  .nav-link.active {
+    color: var(--color-text);
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .header-contact {
+    justify-self: end;
+    color: var(--color-accent);
+    font-size: 0.82rem;
+    font-weight: 650;
+  }
+
+  @media (max-width: 760px) {
+    .header-inner {
+      min-height: 4rem;
+      grid-template-columns: auto 1fr;
+    }
+
+    nav {
+      overflow-x: auto;
+      justify-self: end;
+      scrollbar-width: none;
+    }
+
+    .brand-name,
+    .header-contact {
+      display: none;
+    }
+
+    .nav-list {
+      width: max-content;
+    }
+
+    .nav-link {
+      padding-inline: 0.6rem;
+      font-size: 0.78rem;
+    }
+  }
+</style>

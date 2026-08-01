@@ -1,0 +1,174 @@
+---
+import { getCollection } from 'astro:content';
+import { site } from '../data/site';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { withBase } from '../utils/url';
+
+const principles = (await getCollection('principles'))
+  .filter((entry) => !entry.data.draft)
+  .sort((a, b) => a.data.order - b.data.order);
+---
+
+<BaseLayout title={`关于 ${site.name}`} description={site.description}>
+  <header class="about-hero shell">
+    <div>
+      <p class="eyebrow">About / Profile</p>
+      <h1 class="page-title">技术是手段，<br />清晰判断才是能力。</h1>
+      <p class="lede">{site.description}</p>
+    </div>
+    <img src={withBase(site.avatar)} alt={`${site.name} 的头像占位图`} width="360" height="360" />
+  </header>
+
+  <section class="page-section shell about-grid">
+    <div>
+      <p class="eyebrow">Profile</p>
+      <h2>个人简介</h2>
+    </div>
+    <div class="about-copy">
+      <p>这里需要替换为你的真实介绍：当前阶段、核心技术方向、你关注的问题，以及你希望与什么样的人合作。</p>
+      <p>建议控制在三到五段。不要把简历完整复制到这里，而是帮助访问者理解你的能力组合和选择背后的原因。</p>
+      <dl>
+        <div><dt>Role</dt><dd>{site.role}</dd></div>
+        <div><dt>Location</dt><dd>{site.location}</dd></div>
+        <div><dt>Focus</dt><dd>{site.capabilities.join(' · ')}</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <section class="page-section shell">
+    <p class="eyebrow">Design principles</p>
+    <h2 class="principles-title">我如何做技术与产品判断</h2>
+    <div class="principle-list">
+      {principles.map((principle) => (
+        <article>
+          <span>{String(principle.data.order).padStart(2, '0')}</span>
+          <div>
+            <h3>{principle.data.title}</h3>
+            <p>{principle.data.summary}</p>
+            {principle.data.evidence && <small>Evidence — {principle.data.evidence}</small>}
+          </div>
+        </article>
+      ))}
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .about-hero {
+    display: grid;
+    grid-template-columns: 1fr minmax(16rem, 24rem);
+    gap: var(--space-8);
+    align-items: end;
+    padding-block: var(--space-9) var(--space-8);
+  }
+
+  .about-hero img {
+    aspect-ratio: 1;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    object-fit: cover;
+    box-shadow: var(--shadow-card);
+  }
+
+  .about-grid {
+    display: grid;
+    grid-template-columns: 0.7fr 1.3fr;
+    gap: var(--space-8);
+  }
+
+  h2 {
+    margin: 0;
+    font-size: clamp(2rem, 5vw, 4rem);
+    font-weight: 600;
+    letter-spacing: -0.05em;
+    line-height: 1.05;
+  }
+
+  .about-copy {
+    color: var(--color-text-soft);
+    font-size: 1.08rem;
+  }
+
+  .about-copy p:first-child {
+    margin-top: 0;
+    color: var(--color-text);
+    font-size: 1.3rem;
+  }
+
+  .about-copy dl {
+    margin-top: var(--space-7);
+  }
+
+  .about-copy dl div {
+    display: grid;
+    grid-template-columns: 7rem 1fr;
+    gap: var(--space-4);
+    padding-block: var(--space-3);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .about-copy dt {
+    color: var(--color-text-faint);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+  }
+
+  .about-copy dd {
+    margin: 0;
+  }
+
+  .principles-title {
+    max-width: 17ch;
+    margin-bottom: var(--space-7);
+  }
+
+  .principle-list article {
+    display: grid;
+    grid-template-columns: 7rem 1fr;
+    gap: var(--space-5);
+    padding-block: var(--space-6);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .principle-list article > span {
+    color: var(--color-accent);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+  }
+
+  .principle-list h3 {
+    margin: 0;
+    font-size: clamp(1.4rem, 3vw, 2.1rem);
+    letter-spacing: -0.035em;
+  }
+
+  .principle-list p {
+    max-width: 45rem;
+    margin: var(--space-2) 0;
+    color: var(--color-text-soft);
+  }
+
+  .principle-list small {
+    color: var(--color-text-faint);
+    font-family: var(--font-mono);
+  }
+
+  @media (max-width: 760px) {
+    .about-hero,
+    .about-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .about-hero {
+      padding-block: var(--space-8);
+    }
+
+    .about-hero img {
+      width: min(100%, 22rem);
+    }
+
+    .principle-list article {
+      grid-template-columns: 3rem 1fr;
+    }
+  }
+</style>

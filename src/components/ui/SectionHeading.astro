@@ -1,0 +1,67 @@
+---
+import { withBase } from '../../utils/url';
+
+interface Props {
+  eyebrow: string;
+  title: string;
+  description?: string;
+  href?: string;
+  linkLabel?: string;
+}
+
+const { eyebrow, title, description, href, linkLabel = '查看全部' } = Astro.props;
+---
+
+<div class="section-heading">
+  <div>
+    <p class="eyebrow">{eyebrow}</p>
+    <h2>{title}</h2>
+    {description && <p class="section-description">{description}</p>}
+  </div>
+  {href && <a class="section-link" href={withBase(href)}>{linkLabel} →</a>}
+</div>
+
+<style>
+  .section-heading {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-6);
+    align-items: end;
+    margin-bottom: var(--space-7);
+  }
+
+  h2 {
+    max-width: 18ch;
+    margin: 0;
+    font-size: clamp(2rem, 4.5vw, 3.8rem);
+    font-weight: 600;
+    letter-spacing: -0.05em;
+    line-height: 1.04;
+  }
+
+  .section-description {
+    max-width: 40rem;
+    margin: var(--space-4) 0 0;
+    color: var(--color-text-soft);
+  }
+
+  .section-link {
+    flex: none;
+    padding-bottom: 0.18rem;
+    border-bottom: 1px solid var(--color-border-strong);
+    color: var(--color-text-soft);
+    font-size: 0.86rem;
+  }
+
+  .section-link:hover {
+    color: var(--color-accent);
+    border-color: var(--color-accent);
+  }
+
+  @media (max-width: 620px) {
+    .section-heading {
+      align-items: start;
+      flex-direction: column;
+    }
+  }
+</style>

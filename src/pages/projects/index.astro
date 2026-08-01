@@ -1,0 +1,21 @@
+---
+import { getCollection } from 'astro:content';
+import ProjectCard from '../../components/cards/ProjectCard.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { byPriority, isPublished } from '../../utils/content';
+
+const projects = (await getCollection('projects')).filter(isPublished).sort(byPriority);
+---
+
+<BaseLayout title="学习项目 — 课程设计、Demo 与开源实践" description="从课程设计到个人实验，展示完整的问题解决过程。">
+  <header class="listing-hero shell">
+    <p class="eyebrow">Projects / Experiments</p>
+    <h1 class="page-title">展示过程，<br />也展示判断。</h1>
+    <p class="lede">每个项目都说明背景、个人职责、实现方式、关键难点以及完成后的反思。</p>
+  </header>
+  <section class="listing-stack shell" aria-label="学习项目列表">
+    {projects.length > 0
+      ? <div class="cards-grid">{projects.map((entry) => <ProjectCard entry={entry} />)}</div>
+      : <div class="empty-state">还没有公开的学习项目。</div>}
+  </section>
+</BaseLayout>

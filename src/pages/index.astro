@@ -1,0 +1,365 @@
+---
+import { getCollection } from 'astro:content';
+import NoteRow from '../components/cards/NoteRow.astro';
+import ProductCard from '../components/cards/ProductCard.astro';
+import ProjectCard from '../components/cards/ProjectCard.astro';
+import SectionHeading from '../components/ui/SectionHeading.astro';
+import { site } from '../data/site';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { byDate, byPriority, featured, isPublished } from '../utils/content';
+import { withBase } from '../utils/url';
+
+const [allProducts, allProjects, allNotes, allPrinciples] = await Promise.all([
+  getCollection('products'),
+  getCollection('projects'),
+  getCollection('notes'),
+  getCollection('principles'),
+]);
+
+const featuredProducts = featured(allProducts);
+const featuredProjects = featured(allProjects).slice(0, 4);
+const latestNotes = allNotes.filter(isPublished).sort(byDate).slice(0, 5);
+const principles = allPrinciples
+  .filter((entry) => !entry.data.draft)
+  .sort((a, b) => a.data.order - b.data.order);
+const publicWorkCount = allProjects.filter(isPublished).length;
+const noteCount = allNotes.filter(isPublished).length;
+const productCount = allProducts.filter(isPublished).length;
+---
+
+<BaseLayout>
+  <section class="hero shell">
+    <div class="hero-copy">
+      <div class="identity">
+        <img src={withBase(site.avatar)} alt={`${site.name} 的头像占位图`} width="72" height="72" />
+        <div>
+          <p class="identity-name">{site.name}</p>
+          <p>{site.role}</p>
+        </div>
+      </div>
+      <p class="eyebrow">Portfolio / 2026</p>
+      <h1 class="display-title">把想法做成<br /><span>可信的系统。</span></h1>
+      <p class="lede">{site.description}</p>
+      <div class="button-row">
+        <a class="button button--primary" href="#featured-product">查看旗舰产品 ↓</a>
+        <a class="button" href={site.social.github} rel="noreferrer" target="_blank">GitHub ↗</a>
+      </div>
+    </div>
+
+    <aside class="hero-signal" aria-label="当前状态与能力">
+      <div class="signal-head">
+        <span class="live-dot"></span>
+        <span>NOW</span>
+      </div>
+      <p>{site.status}</p>
+      <dl>
+        <div><dt>Products</dt><dd>{String(productCount).padStart(2, '0')}</dd></div>
+        <div><dt>Projects</dt><dd>{String(publicWorkCount).padStart(2, '0')}</dd></div>
+        <div><dt>Notes</dt><dd>{String(noteCount).padStart(2, '0')}</dd></div>
+      </dl>
+    </aside>
+  </section>
+
+  <div class="capability-strip" aria-label="主要能力">
+    <div class="shell capability-inner">
+      {site.capabilities.map((capability, index) => (
+        <><span>{capability}</span>{index < site.capabilities.length - 1 && <i>◆</i>}</>
+      ))}
+    </div>
+  </div>
+
+  <section id="featured-product" class="page-section shell">
+    <SectionHeading
+      eyebrow="01 / Flagship"
+      title="闭源不等于无法证明。"
+      description="用产品价值、脱敏架构、关键决策和真实结果建立可信度。企业级项目在这里拥有最高视觉优先级。"
+      href="/products/"
+      linkLabel="所有产品"
+    />
+    {featuredProducts.length > 0 ? (
+      <div class="product-stack">
+        {featuredProducts.map((entry, index) => <ProductCard entry={entry} prominent={index === 0} />)}
+      </div>
+    ) : (
+      <div class="empty-state">在产品内容中设置 featured: true 后，旗舰产品会出现在这里。</div>
+    )}
+  </section>
+
+  <section class="page-section shell">
+    <SectionHeading
+      eyebrow="02 / Selected work"
+      title="从学习项目到完整交付。"
+      description="项目不是技术栈清单，而是问题、决策、实现和反思的完整证据链。"
+      href="/projects/"
+      linkLabel="项目归档"
+    />
+    {featuredProjects.length > 0 ? (
+      <div class="cards-grid">
+        {featuredProjects.sort(byPriority).map((entry) => <ProjectCard entry={entry} />)}
+      </div>
+    ) : (
+      <div class="empty-state">精选学习项目会显示在这里。</div>
+    )}
+  </section>
+
+  <section class="page-section shell">
+    <SectionHeading
+      eyebrow="03 / Engineering notes"
+      title="一次只解决一个技术问题。"
+      description="短、准、可以复现。文章用于证明分析路径，而不是堆积篇幅。"
+      href="/notes/"
+      linkLabel="全部笔记"
+    />
+    <div>
+      {latestNotes.map((entry) => <NoteRow entry={entry} />)}
+    </div>
+  </section>
+
+  <section class="page-section shell">
+    <SectionHeading
+      eyebrow="04 / Principles"
+      title="我的设计与工程判断。"
+      description="原则必须能在真实项目中找到证据，否则它只是一句口号。"
+      href="/about/"
+      linkLabel="了解更多"
+    />
+    <div class="principles-grid">
+      {principles.map((principle) => (
+        <article class="principle-card content-card">
+          <span>{String(principle.data.order).padStart(2, '0')}</span>
+          <h3>{principle.data.title}</h3>
+          <p>{principle.data.summary}</p>
+          {principle.data.evidence && <small>Evidence — {principle.data.evidence}</small>}
+        </article>
+      ))}
+    </div>
+  </section>
+
+  <section class="contact-section shell">
+    <p class="eyebrow">Open to conversation</p>
+    <h2>如果你正在寻找能同时理解技术与产品的人，我们可以聊聊。</h2>
+    <div class="button-row">
+      <a class="button button--primary" href={`mailto:${site.email}`}>发送邮件 ↗</a>
+      <a class="button" href={withBase('about/')}>先了解我</a>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .hero {
+    display: grid;
+    min-height: calc(100vh - 4.5rem);
+    grid-template-columns: minmax(0, 1fr) minmax(18rem, 0.38fr);
+    gap: var(--space-7);
+    align-items: end;
+    padding-block: var(--space-8);
+  }
+
+  .identity {
+    display: flex;
+    gap: var(--space-4);
+    align-items: center;
+    margin-bottom: var(--space-8);
+  }
+
+  .identity img {
+    width: 4.5rem;
+    height: 4.5rem;
+    border: 1px solid var(--color-border-strong);
+    border-radius: 1.25rem;
+    object-fit: cover;
+  }
+
+  .identity p {
+    margin: 0;
+    color: var(--color-text-soft);
+    font-size: 0.82rem;
+  }
+
+  .identity .identity-name {
+    color: var(--color-text);
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  .display-title span {
+    color: var(--color-text-soft);
+  }
+
+  .hero-signal {
+    padding: var(--space-5);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-card);
+  }
+
+  .signal-head {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+    color: var(--color-text-faint);
+    font-family: var(--font-mono);
+    font-size: 0.67rem;
+    letter-spacing: 0.15em;
+  }
+
+  .live-dot {
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 50%;
+    background: var(--color-accent);
+    box-shadow: 0 0 12px rgba(103, 245, 200, 0.75);
+  }
+
+  .hero-signal > p {
+    margin: var(--space-5) 0 var(--space-7);
+    font-size: 1.2rem;
+    font-weight: 570;
+    line-height: 1.35;
+  }
+
+  .hero-signal dl {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-3);
+    margin: 0;
+  }
+
+  .hero-signal dl div {
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .hero-signal dt {
+    color: var(--color-text-faint);
+    font-size: 0.64rem;
+  }
+
+  .hero-signal dd {
+    margin: var(--space-1) 0 0;
+    color: var(--color-accent);
+    font-family: var(--font-mono);
+  }
+
+  .capability-strip {
+    overflow: hidden;
+    border-block: 1px solid var(--color-border);
+    background: rgba(255, 255, 255, 0.018);
+  }
+
+  .capability-inner {
+    display: flex;
+    min-height: 4.5rem;
+    justify-content: space-between;
+    gap: var(--space-5);
+    align-items: center;
+    white-space: nowrap;
+  }
+
+  .capability-inner span {
+    color: var(--color-text-soft);
+    font-size: 0.82rem;
+  }
+
+  .capability-inner i {
+    color: var(--color-accent);
+    font-size: 0.35rem;
+    font-style: normal;
+  }
+
+  .product-stack {
+    display: grid;
+    gap: var(--space-5);
+  }
+
+  .principles-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-4);
+  }
+
+  .principle-card {
+    min-height: 22rem;
+    padding: var(--space-5);
+  }
+
+  .principle-card > span {
+    color: var(--color-accent);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+  }
+
+  .principle-card h3 {
+    margin: var(--space-7) 0 var(--space-4);
+    font-size: clamp(1.5rem, 3vw, 2.2rem);
+    font-weight: 600;
+    letter-spacing: -0.04em;
+    line-height: 1.1;
+  }
+
+  .principle-card p {
+    color: var(--color-text-soft);
+  }
+
+  .principle-card small {
+    position: absolute;
+    right: var(--space-5);
+    bottom: var(--space-5);
+    left: var(--space-5);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--color-border);
+    color: var(--color-text-faint);
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+  }
+
+  .contact-section {
+    padding-block: var(--space-9);
+    text-align: center;
+  }
+
+  .contact-section h2 {
+    max-width: 21ch;
+    margin: 0 auto;
+    font-size: clamp(2.2rem, 6vw, 5rem);
+    font-weight: 600;
+    letter-spacing: -0.055em;
+    line-height: 1.04;
+  }
+
+  .contact-section .button-row {
+    justify-content: center;
+  }
+
+  @media (max-width: 850px) {
+    .hero {
+      min-height: auto;
+      grid-template-columns: 1fr;
+      padding-block: var(--space-8);
+    }
+
+    .hero-signal {
+      margin-top: var(--space-6);
+    }
+
+    .principles-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .principle-card {
+      min-height: 18rem;
+    }
+  }
+
+  @media (max-width: 620px) {
+    .identity {
+      margin-bottom: var(--space-7);
+    }
+
+    .capability-inner {
+      justify-content: flex-start;
+      overflow-x: auto;
+    }
+  }
+</style>

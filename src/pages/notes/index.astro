@@ -1,0 +1,33 @@
+---
+import { getCollection } from 'astro:content';
+import NoteRow from '../../components/cards/NoteRow.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { byDate, isPublished } from '../../utils/content';
+
+const notes = (await getCollection('notes')).filter(isPublished).sort(byDate);
+const tags = [...new Set(notes.flatMap((entry) => entry.data.tags))].sort();
+---
+
+<BaseLayout title="技术笔记 — 小问题的清晰解法" description="聚焦具体问题、原因、解法和边界的短技术文章。">
+  <header class="listing-hero shell">
+    <p class="eyebrow">Engineering notes</p>
+    <h1 class="page-title">短一点，<br />但要说清楚。</h1>
+    <p class="lede">针对一个明确技术问题，给出原因、最小解法、适用边界和必要代码。</p>
+    {tags.length > 0 && (
+      <ul class="tags note-tags" aria-label="所有文章标签">
+        {tags.map((tag) => <li class="tag">{tag}</li>)}
+      </ul>
+    )}
+  </header>
+  <section class="listing-stack shell" aria-label="技术文章列表">
+    {notes.length > 0
+      ? <div>{notes.map((entry) => <NoteRow entry={entry} />)}</div>
+      : <div class="empty-state">还没有发布技术笔记。</div>}
+  </section>
+</BaseLayout>
+
+<style>
+  .note-tags {
+    margin-top: var(--space-6);
+  }
+</style>

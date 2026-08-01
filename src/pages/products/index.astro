@@ -1,0 +1,21 @@
+---
+import { getCollection } from 'astro:content';
+import ProductCard from '../../components/cards/ProductCard.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { byPriority, isPublished } from '../../utils/content';
+
+const products = (await getCollection('products')).filter(isPublished).sort(byPriority);
+---
+
+<BaseLayout title="产品案例 — 闭源项目与商业化探索" description="闭源产品的价值、架构、关键决策与验证成果。">
+  <header class="listing-hero shell">
+    <p class="eyebrow">Products / Ventures</p>
+    <h1 class="page-title">产品不是代码仓库，<br />而是被验证的价值。</h1>
+    <p class="lede">这里展示闭源产品可以公开的部分：问题、用户、产品方案、脱敏架构、技术判断和真实结果。</p>
+  </header>
+  <section class="listing-stack shell" aria-label="产品案例列表">
+    {products.length > 0
+      ? products.map((entry, index) => <ProductCard entry={entry} prominent={index === 0} />)
+      : <div class="empty-state">还没有公开的产品案例。</div>}
+  </section>
+</BaseLayout>

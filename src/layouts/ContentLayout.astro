@@ -1,0 +1,88 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import TagList from '../components/ui/TagList.astro';
+import { withBase } from '../utils/url';
+
+interface Props {
+  eyebrow: string;
+  title: string;
+  summary: string;
+  publishedAt: Date;
+  updatedAt?: Date;
+  tags?: string[];
+  backHref: string;
+  backLabel: string;
+  status?: string;
+}
+
+const {
+  eyebrow,
+  title,
+  summary,
+  publishedAt,
+  updatedAt,
+  tags = [],
+  backHref,
+  backLabel,
+  status,
+} = Astro.props;
+const formatter = new Intl.DateTimeFormat('zh-CN', {
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+---
+
+<BaseLayout title={`${title} — ${eyebrow}`} description={summary}>
+  <article>
+    <header class="content-hero shell">
+      <a class="back-link" href={withBase(backHref)}>← {backLabel}</a>
+      <p class="eyebrow">{eyebrow}</p>
+      <h1 class="page-title">{title}</h1>
+      <p class="lede">{summary}</p>
+      <div class="meta-row">
+        <span>发布于 {formatter.format(publishedAt)}</span>
+        {updatedAt && <span>更新于 {formatter.format(updatedAt)}</span>}
+        {status && <span>{status}</span>}
+      </div>
+      <TagList tags={tags} />
+    </header>
+
+    <div class="content-body shell">
+      <div class="prose"><slot /></div>
+    </div>
+  </article>
+</BaseLayout>
+
+<style>
+  .content-hero {
+    padding-block: var(--space-8) var(--space-7);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .back-link {
+    display: inline-block;
+    margin-bottom: var(--space-7);
+    color: var(--color-text-soft);
+    font-size: 0.9rem;
+    transition: color var(--transition);
+  }
+
+  .back-link:hover {
+    color: var(--color-accent);
+  }
+
+  .meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    margin: var(--space-5) 0 var(--space-4);
+    color: var(--color-text-faint);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+  }
+
+  .content-body {
+    padding-block: var(--space-8) var(--space-9);
+  }
+</style>

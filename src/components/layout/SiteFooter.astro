@@ -1,0 +1,64 @@
+---
+import { site } from '../../data/site';
+import { withBase } from '../../utils/url';
+---
+
+<footer class="site-footer">
+  <div class="footer-inner shell">
+    <div>
+      <p class="footer-title">把复杂问题，变成清晰可交付的系统。</p>
+      <a class="footer-email" href={`mailto:${site.email}`}>{site.email}</a>
+    </div>
+    <div class="footer-meta">
+      <a href={site.social.github} rel="noreferrer" target="_blank">GitHub ↗</a>
+      <a href={withBase('about/')}>关于</a>
+      <span>© {new Date().getFullYear()} {site.name}</span>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    border-top: 1px solid var(--color-border);
+    background: rgba(255, 255, 255, 0.015);
+  }
+
+  .footer-inner {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-7);
+    padding-block: var(--space-8);
+  }
+
+  .footer-title {
+    max-width: 21ch;
+    margin: 0 0 var(--space-4);
+    font-size: clamp(1.4rem, 3vw, 2.1rem);
+    font-weight: 600;
+    letter-spacing: -0.04em;
+    line-height: 1.15;
+  }
+
+  .footer-email {
+    color: var(--color-accent);
+  }
+
+  .footer-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--space-2);
+    color: var(--color-text-soft);
+    font-size: 0.82rem;
+  }
+
+  @media (max-width: 620px) {
+    .footer-inner {
+      flex-direction: column;
+    }
+
+    .footer-meta {
+      align-items: flex-start;
+    }
+  }
+</style>

@@ -1,0 +1,37 @@
+---
+import { getCollection, render, type CollectionEntry } from 'astro:content';
+import ContentLayout from '../../layouts/ContentLayout.astro';
+import { isPublished } from '../../utils/content';
+
+export async function getStaticPaths() {
+  const entries = (await getCollection('projects')).filter(isPublished);
+  return entries.map((entry) => ({ params: { id: entry.id }, props: { entry } }));
+}
+
+interface Props {
+  entry: CollectionEntry<'projects'>;
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+---
+
+<ContentLayout
+  eyebrow="Learning project"
+  title={entry.data.title}
+  summary={entry.data.summary}
+  publishedAt={entry.data.publishedAt}
+  updatedAt={entry.data.updatedAt}
+  tags={entry.data.tags}
+  backHref="/projects/"
+  backLabel="返回项目列表"
+  status={`${entry.data.year} · ${entry.data.status} · ${entry.data.role}`}
+>
+  <Content />
+  {(entry.data.repo || entry.data.demo) && (
+    <div class="button-row">
+      {entry.data.repo && <a class="button button--primary" href={entry.data.repo}>查看代码仓库 ↗</a>}
+      {entry.data.demo && <a class="button" href={entry.data.demo}>在线演示 ↗</a>}
+    </div>
+  )}
+</ContentLayout>
