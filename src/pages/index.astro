@@ -84,7 +84,7 @@ const areas = [
       </div>
       <p class="profile-status">{site.status}</p>
       <ul>
-        {site.capabilities.slice(0, 4).map((capability) => <li>{capability}</li>)}
+        {site.capabilities.map((capability) => <li>{capability}</li>)}
       </ul>
       <RepoStar />
     </aside>

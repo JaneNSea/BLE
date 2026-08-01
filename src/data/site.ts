@@ -5,7 +5,7 @@ export const site = {
   location: 'China',
   status: '正在构建有真实价值的产品',
   description:
-    '',
+    '我不只关心技术能否实现，更在意产品是否创造真实价值、系统是否安全可信。面对持续涌现的新领域与新问题，我也在探索 AI 时代的软件开发新范式，让想法更快地成为可以验证、可以交付的产品。',
   email: '2298983695@qq.com',
   avatar: '/avatar.jpg',
   resume: '/resume.pdf',
