@@ -38,6 +38,10 @@ On Windows PowerShell, use `npm.cmd` if script execution policy blocks `npm.ps1`
 
 ## Content rules
 
+- Before adding, migrating, or substantially rewriting a learning project, read and
+  follow `docs/CODEX_LEARNING_PROJECT_GUIDE.md` in full. It defines the durable
+  cross-session workflow for source fidelity, truth boundaries, project imagery,
+  privacy, metadata, and validation.
 - Use Markdown for short notes and MDX only when a case study needs components.
 - Keep slugs lowercase ASCII kebab-case.
 - A new content file must become routable and discoverable without editing a page.

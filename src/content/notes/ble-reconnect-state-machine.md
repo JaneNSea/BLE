@@ -7,7 +7,7 @@ featured: true
 priority: 20
 draft: false
 readingMinutes: 4
-relatedProjects: ["ble-console-example"]
+relatedProjects: []
 ---
 
 ## 问题
