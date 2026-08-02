@@ -7,9 +7,10 @@ interface Props {
 }
 
 const { entry } = Astro.props;
-const date = new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: '2-digit' }).format(
-  entry.data.publishedAt,
-);
+const date = entry.data.publishedLabel ?? new Intl.DateTimeFormat('zh-CN', {
+  year: 'numeric',
+  month: '2-digit',
+}).format(entry.data.publishedAt);
 ---
 
 <article class="note-row">

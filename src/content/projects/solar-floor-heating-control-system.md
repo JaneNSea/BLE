@@ -11,8 +11,8 @@ draft: false
 type: "personal"
 status: "completed"
 role: "独立设计与实现"
-year: 2026
-period: "2026 年"
+year: 2025
+period: "2025 年 9 月—12 月"
 authors:
   - name: "JaneNSea"
     role: "独立作者 · 嵌入式与云端系统设计"
@@ -1927,7 +1927,7 @@ README 负责让开发者快速运行，技术文档负责解释系统如何设�
 
 ---
 
-## 34. 演示与答辩流程
+## 34. 演示流程
 
 ### 34.1 第一阶段：边缘感知
 

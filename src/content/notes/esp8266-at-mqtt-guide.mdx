@@ -1,0 +1,103 @@
+---
+title: "ESP8266 使用指南与注意事项：烧录、AT 与 MQTT"
+summary: "把 ESP-01 的固件烧录、STM32 串口接入和 MQTT 联调拆成三段，解释 GPIO0、供电、命令时序与云端凭据为什么最容易出错。"
+publishedAt: 2025-11-01
+publishedLabel: "2025 年 11 月"
+tags: ["ESP8266", "ESP-AT", "MQTT", "STM32", "IoT"]
+featured: false
+priority: 0
+draft: false
+readingMinutes: 8
+relatedProjects: ["solar-floor-heating-control-system"]
+---
+
+import { withBase } from '../../utils/url';
+
+## 先分清两种启动状态
+
+ESP-01 最常见的混乱，是把“烧录固件”和“运行 AT 固件”当成同一种接线。
+
+| 状态 | GPIO0 在复位/上电瞬间 | 目的 |
+|---|---|---|
+| 下载模式 | 拉低到 GND | 通过 UART 写入固件 |
+| 正常启动 | 拉高或悬空 | 从 Flash 执行已经烧录的固件 |
+
+GPIO0 是启动配置脚，关键是**复位释放或上电采样的那个瞬间**。烧录结束后如果仍然拉低，即使固件正确，模块也只会再次等待下载。
+
+<figure>
+  <img src={withBase('/images/notes/esp8266/esp01-flashing-wiring.webp')} alt="ESP-01 与 USB 转 TTL 模块的烧录接线示意" />
+  <figcaption>ESP-01 烧录接线记录：TX/RX 交叉、共地，并在下载启动时将 GPIO0 拉低。</figcaption>
+</figure>
+
+## 供电比串口参数更值得先检查
+
+ESP8266 工作在 3.3V，并不耐受 5V。建议使用能够提供至少 500mA 的稳定电源，在模块附近放置去耦电容；很多“连上 Wi-Fi 就复位”并不是代码问题，而是射频发射时的瞬时压降。
+
+烧录和调试时至少确认：
+
+- VCC 与 EN 接稳定 3.3V。
+- GND 与 USB-TTL、STM32 共地。
+- ESP TX 接对端 RX，ESP RX 接对端 TX。
+- USB-TTL 的逻辑电平选择 3.3V，不要把 5V 串口直接送入 ESP8266。
+
+在常见 STM32 USART2 映射中，PA2 是 MCU_TX，应连接 ESP_RX；PA3 是 MCU_RX，应连接 ESP_TX。不要只看线的颜色判断方向。
+
+## 固件烧录后先做最小自检
+
+原始记录使用过标记为“1471”的固件包，但这个编号不是通用版本号。不同模组容量和 AT 固件分支支持的命令并不完全一致，应先执行：
+
+```text
+AT
+AT+GMR
+```
+
+第一条确认串口链路，第二条记录实际 AT 与 SDK 版本。命令以 CRLF 结束，并且必须等待上一条返回 `OK` 或 `ERROR` 后再发送下一条；连续灌入命令容易收到 `busy p...`。
+
+## 从 Wi-Fi 到 MQTT 的最小链路
+
+先完成 Wi-Fi，再验证 MQTT。示例中的身份数据全部使用占位符：
+
+```text
+AT+CWMODE=1
+AT+CWJAP="<wifi_ssid>","<wifi_password>"
+
+AT+MQTTUSERCFG=0,1,"<client_id>","<username>","<password>",0,0,""
+AT+MQTTCONN=0,"<broker_host>",1883,1
+AT+MQTTSUB=0,"$sys/<product_id>/<device_name>/thing/property/set",0
+AT+MQTTPUB=0,"$sys/<product_id>/<device_name>/thing/property/post","{\"id\":\"123\",\"params\":{\"temperature\":{\"value\":24.5}}}",0,0
+```
+
+这四步分别完成客户端身份配置、Broker 连接、属性设置主题订阅和属性上报。不要把一长串命令视为“固定咒语”：调试时每一步都要查询状态、检查返回值，并确认主题来自当前云平台的设备模型。
+
+ESP8266 的 `AT+MQTTUSERCFG` 整条命令存在长度限制。用户名或密码很长时使用 `AT+MQTTLONGUSERNAME`、`AT+MQTTLONGPASSWORD`；载荷过长或包含二进制数据时使用 `AT+MQTTPUBRAW`。
+
+> **安全提醒**：设备密钥、签名 Token、Wi-Fi 密码和带时效的鉴权串都不能提交到博客或公开仓库。示例代码只读取本地私有配置，日志也应对凭据脱敏。
+
+## MCU 侧不要写成阻塞脚本
+
+可靠的 AT 驱动至少需要：命令队列、超时、最终响应判断和异步消息分流。`+MQTTSUBRECV` 可能在任意时刻到达，不能把所有串口文本都当成当前命令的响应。
+
+```text
+发送一条命令
+→ 等待 OK / ERROR / 超时
+→ 同时识别 Wi-Fi 断开与 MQTT 下行等异步通知
+→ 结束当前事务
+→ 再发送下一条命令
+```
+
+网络重连应采用退避，不要在主循环里无限等待；即使云端离线，STM32 也应继续完成传感器采集和本地安全控制。
+
+## 快速排错
+
+- **上电无任何输出**：先查 3.3V、EN 和共地，再换波特率观察启动日志。
+- **烧录工具一直等待同步**：确认 GPIO0 在复位采样时确实为低、TX/RX 已交叉。
+- **烧录成功但不能运行**：释放 GPIO0 后重新复位。
+- **连接 Wi-Fi 时反复重启**：优先检查电源瞬态能力与去耦，而不是反复改串口代码。
+- **MQTT 命令提示不支持**：用 `AT+GMR` 核对固件分支和命令集，不要套用其他版本示例。
+- **偶发解析错乱**：区分命令响应与异步 URC，并按行或长度组织接收缓冲区。
+
+## 参考资料
+
+- [Espressif：ESP8266 硬件与下载接线](https://docs.espressif.com/projects/esp-techpedia/en/latest/esp-friends/get-started/try-firmware/try-firmware-hardware/esp8266.html)
+- [Espressif：ESP-AT MQTT Commands](https://docs.espressif.com/projects/esp-at/en/release-v2.2.0.0_esp8266/AT_Command_Set/MQTT_AT_Commands.html)
+- [Espressif：What is ESP-AT](https://docs.espressif.com/projects/esp-at/en/release-v2.2.0.0_esp8266/Get_Started/What_is_ESP-AT.html)

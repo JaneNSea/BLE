@@ -3,31 +3,504 @@ import { getCollection } from 'astro:content';
 import NoteRow from '../../components/cards/NoteRow.astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { byDate, isPublished } from '../../utils/content';
+import { withBase } from '../../utils/url';
 
 const notes = (await getCollection('notes')).filter(isPublished).sort(byDate);
-const tags = [...new Set(notes.flatMap((entry) => entry.data.tags))].sort();
+const tags = [...new Set(notes.flatMap((entry) => entry.data.tags))]
+  .sort((left, right) => left.localeCompare(right, 'zh-CN'));
+const tagCounts = new Map(
+  tags.map((tag) => [tag, notes.filter((entry) => entry.data.tags.includes(tag)).length]),
+);
 ---
 
-<BaseLayout title="技术笔记 — 小问题的清晰解法" description="聚焦具体问题、原因、解法和边界的短技术文章。">
-  <header class="listing-hero shell">
-    <p class="eyebrow">Engineering notes</p>
-    <h1 class="page-title">短一点，<br />但要说清楚。</h1>
-    <p class="lede">针对一个明确技术问题，给出原因、最小解法、适用边界和必要代码。</p>
-    {tags.length > 0 && (
-      <ul class="tags note-tags" aria-label="所有文章标签">
-        {tags.map((tag) => <li class="tag">{tag}</li>)}
-      </ul>
-    )}
+<BaseLayout
+  title="技术笔记 — 小问题的清晰解法"
+  description="围绕嵌入式、软件工程与系统设计，记录具体问题的原因、解法与适用边界。"
+>
+  <header class="notes-hero shell">
+    <div class="hero-copy">
+      <p class="eyebrow">Engineering notes</p>
+      <h1 class="page-title">短一点，<br />但要说清楚。</h1>
+      <p class="lede">
+        从现象走向原理，再落到可以复现的步骤。这里记录嵌入式、软件工程与系统设计中的具体问题。
+      </p>
+      <div class="hero-index" aria-label="笔记概况">
+        <span><strong>{notes.length}</strong> 篇公开笔记</span>
+        <span><strong>{tags.length}</strong> 个技术主题</span>
+      </div>
+    </div>
+
+    <figure class="hero-visual">
+      <div class="visual-backdrop" aria-hidden="true"></div>
+      <img
+        src={withBase('/images/notes/notes-index-hero.webp')}
+        alt="雷达、Wi-Fi 模块、开发板与工程手稿组成的暖色技术工作台插画"
+        width="1536"
+        height="1024"
+        loading="eager"
+        fetchpriority="high"
+      />
+      <figcaption>
+        <span>FIELD NOTES</span>
+        <span>Problem → Principle → Practice</span>
+      </figcaption>
+    </figure>
   </header>
-  <section class="listing-stack shell" aria-label="技术文章列表">
-    {notes.length > 0
-      ? <div>{notes.map((entry) => <NoteRow entry={entry} />)}</div>
-      : <div class="empty-state">还没有发布技术笔记。</div>}
+
+  <section class="notes-explorer shell" data-notes-explorer aria-labelledby="notes-heading">
+    <aside class="filter-rail" aria-label="技术笔记筛选">
+      <p class="rail-kicker">Browse by topic</p>
+      <h2 id="notes-heading">按主题寻找答案</h2>
+      <p class="rail-note">选择一个标签，右侧只保留与它相关的笔记。</p>
+
+      <div class="tag-filter" role="group" aria-label="按标签筛选">
+        <button class="filter-button is-active" type="button" data-tag="all" aria-pressed="true">
+          <span>全部</span><small>{notes.length}</small>
+        </button>
+        {tags.map((tag) => (
+          <button class="filter-button" type="button" data-tag={tag} aria-pressed="false">
+            <span>{tag}</span><small>{tagCounts.get(tag)}</small>
+          </button>
+        ))}
+      </div>
+    </aside>
+
+    <div class="results-panel">
+      <div class="search-row">
+        <label class="search-box">
+          <span class="sr-only">搜索技术笔记</span>
+          <svg aria-hidden="true" viewBox="0 0 24 24" width="19" height="19">
+            <circle cx="11" cy="11" r="6.5"></circle>
+            <path d="m16 16 4 4"></path>
+          </svg>
+          <input
+            type="search"
+            placeholder="搜索标题、摘要或标签…"
+            autocomplete="off"
+            data-notes-search
+          />
+          <button type="button" data-clear-search hidden>清除</button>
+        </label>
+        <p class="result-count" data-result-count aria-live="polite"></p>
+      </div>
+
+      {notes.length > 0 ? (
+        <div class="note-results" data-note-results>
+          {notes.map((entry) => (
+            <div
+              class="note-result"
+              data-note-item
+              data-tags={entry.data.tags.join('|')}
+              data-search={[entry.data.title, entry.data.summary, ...entry.data.tags].join(' ')}
+            >
+              <NoteRow entry={entry} />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div class="empty-state">还没有发布技术笔记。</div>
+      )}
+
+      <div class="empty-state filtered-empty" data-filtered-empty hidden>
+        <strong>没有找到匹配的笔记</strong>
+        <span>可以换一个关键词，或返回“全部”主题。</span>
+      </div>
+
+      <nav class="pagination" data-pagination aria-label="技术笔记分页" hidden>
+        <button type="button" data-page-previous>← 上一页</button>
+        <div class="page-numbers" data-page-numbers></div>
+        <button type="button" data-page-next>下一页 →</button>
+      </nav>
+    </div>
   </section>
 </BaseLayout>
 
+<script>
+  const explorer = document.querySelector<HTMLElement>('[data-notes-explorer]');
+
+  if (explorer) {
+    const pageSize = 10;
+    const items = [...explorer.querySelectorAll<HTMLElement>('[data-note-item]')];
+    const tagButtons = [...explorer.querySelectorAll<HTMLButtonElement>('[data-tag]')];
+    const search = explorer.querySelector<HTMLInputElement>('[data-notes-search]');
+    const clearSearch = explorer.querySelector<HTMLButtonElement>('[data-clear-search]');
+    const resultCount = explorer.querySelector<HTMLElement>('[data-result-count]');
+    const empty = explorer.querySelector<HTMLElement>('[data-filtered-empty]');
+    const pagination = explorer.querySelector<HTMLElement>('[data-pagination]');
+    const pageNumbers = explorer.querySelector<HTMLElement>('[data-page-numbers]');
+    const previous = explorer.querySelector<HTMLButtonElement>('[data-page-previous]');
+    const next = explorer.querySelector<HTMLButtonElement>('[data-page-next]');
+    const params = new URLSearchParams(window.location.search);
+    const normalise = (value: string) => value.normalize('NFKC').trim().toLocaleLowerCase('zh-CN');
+    const availableTags = new Set(tagButtons.map((button) => button.dataset.tag ?? 'all'));
+
+    let activeTag = availableTags.has(params.get('tag') ?? '') ? params.get('tag') ?? 'all' : 'all';
+    let currentPage = Math.max(1, Number.parseInt(params.get('page') ?? '1', 10) || 1);
+
+    if (search) search.value = params.get('q') ?? '';
+
+    const updateUrl = () => {
+      const nextParams = new URLSearchParams();
+      const query = search?.value.trim() ?? '';
+      if (query) nextParams.set('q', query);
+      if (activeTag !== 'all') nextParams.set('tag', activeTag);
+      if (currentPage > 1) nextParams.set('page', String(currentPage));
+      const queryString = nextParams.toString();
+      window.history.replaceState({}, '', `${window.location.pathname}${queryString ? `?${queryString}` : ''}`);
+    };
+
+    const renderPageButtons = (pageCount: number) => {
+      if (!pageNumbers) return;
+      pageNumbers.replaceChildren();
+
+      for (let page = 1; page <= pageCount; page += 1) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = String(page);
+        button.className = page === currentPage ? 'is-current' : '';
+        button.setAttribute('aria-label', `第 ${page} 页`);
+        if (page === currentPage) button.setAttribute('aria-current', 'page');
+        button.addEventListener('click', () => {
+          currentPage = page;
+          render();
+          explorer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+        pageNumbers.append(button);
+      }
+    };
+
+    const render = () => {
+      const query = normalise(search?.value ?? '');
+      const matched = items.filter((item) => {
+        const itemTags = (item.dataset.tags ?? '').split('|');
+        const matchesTag = activeTag === 'all' || itemTags.includes(activeTag);
+        const matchesSearch = !query || normalise(item.dataset.search ?? '').includes(query);
+        return matchesTag && matchesSearch;
+      });
+      const pageCount = Math.max(1, Math.ceil(matched.length / pageSize));
+      currentPage = Math.min(currentPage, pageCount);
+      const start = (currentPage - 1) * pageSize;
+      const visibleItems = new Set(matched.slice(start, start + pageSize));
+
+      items.forEach((item) => { item.hidden = !visibleItems.has(item); });
+      tagButtons.forEach((button) => {
+        const selected = button.dataset.tag === activeTag;
+        button.classList.toggle('is-active', selected);
+        button.setAttribute('aria-pressed', String(selected));
+      });
+
+      if (clearSearch) clearSearch.hidden = !search?.value;
+      if (empty) empty.hidden = matched.length > 0;
+      if (resultCount) {
+        resultCount.textContent = matched.length
+          ? `找到 ${matched.length} 篇 · 第 ${currentPage} / ${pageCount} 页`
+          : '未找到匹配内容';
+      }
+      if (pagination) pagination.hidden = pageCount <= 1 || matched.length === 0;
+      if (previous) previous.disabled = currentPage === 1;
+      if (next) next.disabled = currentPage === pageCount;
+      renderPageButtons(pageCount);
+      updateUrl();
+    };
+
+    tagButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        activeTag = button.dataset.tag ?? 'all';
+        currentPage = 1;
+        render();
+      });
+    });
+
+    search?.addEventListener('input', () => {
+      currentPage = 1;
+      render();
+    });
+
+    clearSearch?.addEventListener('click', () => {
+      if (!search) return;
+      search.value = '';
+      currentPage = 1;
+      search.focus();
+      render();
+    });
+
+    previous?.addEventListener('click', () => {
+      currentPage = Math.max(1, currentPage - 1);
+      render();
+      explorer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
+    next?.addEventListener('click', () => {
+      currentPage += 1;
+      render();
+      explorer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
+    render();
+  }
+</script>
+
 <style>
-  .note-tags {
+  .notes-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 0.94fr) minmax(22rem, 0.76fr);
+    gap: clamp(2rem, 7vw, 6.5rem);
+    align-items: center;
+    min-height: 34rem;
+    padding-block: clamp(3.5rem, 8vw, 7rem) clamp(3rem, 6vw, 5rem);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .hero-copy { position: relative; z-index: 1; min-width: 0; }
+  .hero-copy .lede { max-width: 36rem; overflow-wrap: anywhere; }
+
+  .hero-index {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-5);
     margin-top: var(--space-6);
+    color: var(--color-text-faint);
+    font-size: 0.78rem;
+  }
+
+  .hero-index span { display: inline-flex; gap: 0.35rem; align-items: baseline; }
+  .hero-index strong { color: var(--color-text); font-family: var(--font-display); font-size: 1.4rem; }
+
+  .hero-visual {
+    position: relative;
+    isolation: isolate;
+    margin: 0;
+    transform: rotate(1.2deg);
+  }
+
+  .visual-backdrop {
+    position: absolute;
+    z-index: -1;
+    inset: 8% -3% -4% 7%;
+    border: 1px solid var(--color-border-strong);
+    background: rgba(196, 158, 91, 0.16);
+    clip-path: polygon(3% 3%, 98% 0, 100% 87%, 91% 100%, 0 96%);
+    transform: rotate(-4deg);
+  }
+
+  .hero-visual img {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 3 / 2;
+    object-fit: cover;
+    border: 1px solid rgba(91, 70, 41, 0.2);
+    box-shadow: 0 26px 70px rgba(79, 57, 26, 0.16);
+    clip-path: polygon(4% 0, 100% 5%, 97% 93%, 8% 100%, 0 17%);
+  }
+
+  .hero-visual figcaption {
+    position: absolute;
+    right: -1rem;
+    bottom: 7%;
+    display: grid;
+    gap: 0.05rem;
+    min-width: 11rem;
+    padding: 0.65rem 0.85rem;
+    border: 1px solid var(--color-border-strong);
+    color: var(--color-text-soft);
+    background: rgba(255, 250, 240, 0.92);
+    box-shadow: var(--shadow-card);
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.04em;
+    transform: rotate(-3deg);
+  }
+
+  .hero-visual figcaption span:first-child { color: var(--color-accent-strong); font-weight: 800; }
+
+  .notes-explorer {
+    display: grid;
+    grid-template-columns: minmax(10.5rem, 0.22fr) minmax(0, 0.78fr);
+    gap: clamp(2rem, 5vw, 4.5rem);
+    align-items: start;
+    padding-block: clamp(3rem, 6vw, 5rem) var(--space-9);
+  }
+
+  .filter-rail {
+    position: sticky;
+    top: 6.5rem;
+    padding-right: var(--space-5);
+    border-right: 1px solid var(--color-border);
+  }
+
+  .rail-kicker {
+    margin: 0 0 var(--space-2);
+    color: var(--color-accent-strong);
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .filter-rail h2 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(1.35rem, 2.4vw, 1.8rem);
+    letter-spacing: -0.03em;
+    line-height: 1.25;
+  }
+
+  .rail-note {
+    margin: var(--space-3) 0 var(--space-5);
+    color: var(--color-text-faint);
+    font-size: 0.74rem;
+    line-height: 1.65;
+  }
+
+  .tag-filter { display: grid; gap: 0.35rem; }
+
+  .filter-button {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    padding: 0.48rem 0.65rem;
+    border: 1px solid transparent;
+    border-radius: 0.7rem;
+    color: var(--color-text-soft);
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+    transition: color var(--transition), border-color var(--transition), background var(--transition);
+  }
+
+  .filter-button span { overflow: hidden; font-size: 0.76rem; text-overflow: ellipsis; white-space: nowrap; }
+  .filter-button small { color: var(--color-text-faint); font-family: var(--font-mono); font-size: 0.62rem; }
+  .filter-button:hover { color: var(--color-text); background: rgba(255, 251, 243, 0.48); }
+
+  .filter-button.is-active {
+    border-color: var(--color-border-strong);
+    color: var(--color-text);
+    background: var(--color-accent-soft);
+    font-weight: 720;
+  }
+
+  .results-panel { min-width: 0; }
+
+  .search-row {
+    display: flex;
+    gap: var(--space-4);
+    align-items: center;
+    justify-content: space-between;
+    min-height: 3.35rem;
+    padding-bottom: var(--space-4);
+  }
+
+  .search-box {
+    display: flex;
+    flex: 1;
+    min-width: 12rem;
+    max-width: 38rem;
+    min-height: 3rem;
+    align-items: center;
+    gap: var(--space-3);
+    padding: 0.25rem 0.8rem 0.25rem 1rem;
+    border: 1px solid var(--color-border-strong);
+    border-radius: 999px;
+    background: rgba(255, 251, 243, 0.62);
+    box-shadow: 0 10px 30px rgba(92, 67, 31, 0.05);
+  }
+
+  .search-box:focus-within { border-color: rgba(143, 106, 44, 0.55); background: var(--color-surface-strong); }
+  .search-box svg { flex: 0 0 auto; fill: none; stroke: var(--color-text-faint); stroke-linecap: round; stroke-width: 1.7; }
+
+  .search-box input {
+    width: 100%;
+    min-width: 0;
+    border: 0;
+    outline: 0;
+    color: var(--color-text);
+    background: transparent;
+    font-size: 0.84rem;
+  }
+
+  .search-box input::placeholder { color: var(--color-text-faint); }
+
+  .search-box button {
+    flex: 0 0 auto;
+    padding: 0.25rem 0.35rem;
+    border: 0;
+    color: var(--color-accent-strong);
+    background: transparent;
+    font-size: 0.68rem;
+    cursor: pointer;
+  }
+
+  .result-count { flex: 0 0 auto; margin: 0; color: var(--color-text-faint); font-size: 0.7rem; }
+  .note-result[hidden] { display: none; }
+
+  .filtered-empty { display: grid; gap: var(--space-2); }
+  .filtered-empty[hidden] { display: none; }
+  .filtered-empty span { font-size: 0.82rem; }
+
+  .pagination {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    align-items: center;
+    justify-content: space-between;
+    padding-top: var(--space-6);
+  }
+
+  .pagination[hidden] { display: none; }
+  .page-numbers { display: flex; gap: 0.35rem; }
+
+  .pagination button {
+    min-width: 2.25rem;
+    min-height: 2.25rem;
+    padding: 0.35rem 0.65rem;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    color: var(--color-text-soft);
+    background: rgba(255, 251, 243, 0.55);
+    font-size: 0.7rem;
+    cursor: pointer;
+  }
+
+  .pagination button:hover:not(:disabled),
+  .pagination button.is-current { border-color: var(--color-accent-strong); color: var(--color-text); background: var(--color-accent-soft); }
+  .pagination button:disabled { opacity: 0.42; cursor: not-allowed; }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    clip-path: inset(50%);
+  }
+
+  @media (max-width: 850px) {
+    .notes-hero { grid-template-columns: 1fr 0.82fr; min-height: 0; }
+    .notes-explorer { grid-template-columns: minmax(0, 1fr); }
+    .filter-rail { position: static; min-width: 0; padding-right: 0; padding-bottom: var(--space-5); border-right: 0; border-bottom: 1px solid var(--color-border); }
+    .rail-note { margin-bottom: var(--space-4); }
+    .tag-filter { display: flex; flex-wrap: wrap; }
+    .filter-button { width: auto; gap: var(--space-3); }
+  }
+
+  @media (max-width: 680px) {
+    .notes-hero { grid-template-columns: minmax(0, 1fr); gap: var(--space-7); padding-top: var(--space-7); }
+    .hero-visual { width: min(94%, 31rem); margin-inline: auto; }
+    .hero-visual figcaption { right: -0.4rem; }
+    .search-row { align-items: stretch; flex-direction: column; gap: var(--space-2); }
+    .search-box { max-width: none; }
+    .result-count { padding-left: var(--space-2); }
+  }
+
+  @media (max-width: 440px) {
+    .hero-index { gap: var(--space-3); }
+    .hero-visual figcaption { display: none; }
+    .pagination { justify-content: center; }
+    .pagination > button { order: 2; }
+    .page-numbers { width: 100%; justify-content: center; }
   }
 </style>

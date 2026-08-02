@@ -8,6 +8,7 @@ interface Props {
   title: string;
   summary: string;
   publishedAt: Date;
+  publishedLabel?: string;
   updatedAt?: Date;
   tags?: string[];
   backHref: string;
@@ -20,6 +21,7 @@ const {
   title,
   summary,
   publishedAt,
+  publishedLabel,
   updatedAt,
   tags = [],
   backHref,
@@ -41,7 +43,7 @@ const formatter = new Intl.DateTimeFormat('zh-CN', {
       <h1 class="page-title">{title}</h1>
       <p class="lede">{summary}</p>
       <div class="meta-row">
-        <span>发布于 {formatter.format(publishedAt)}</span>
+        <span>发布于 {publishedLabel ?? formatter.format(publishedAt)}</span>
         {updatedAt && <span>更新于 {formatter.format(updatedAt)}</span>}
         {status && <span>{status}</span>}
       </div>

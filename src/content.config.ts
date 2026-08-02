@@ -21,6 +21,7 @@ const notes = defineCollection({
   loader: glob({ base: './src/content/notes', pattern: '**/*.{md,mdx}' }),
   schema: z.object({
     ...commonShowcaseFields,
+    publishedLabel: z.string().optional(),
     readingMinutes: z.number().int().positive().optional(),
     relatedProjects: z.array(z.string()).default([]),
   }),
