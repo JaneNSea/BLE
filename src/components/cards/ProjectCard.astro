@@ -1,13 +1,15 @@
 ---
 import type { ProjectEntry } from '../../utils/content';
 import { withBase } from '../../utils/url';
+import ProjectAuthors from '../content/ProjectAuthors.astro';
 import TagList from '../ui/TagList.astro';
 
 interface Props {
   entry: ProjectEntry;
+  variant?: 'standard' | 'showcase';
 }
 
-const { entry } = Astro.props;
+const { entry, variant = 'standard' } = Astro.props;
 const typeLabels = {
   course: '课程设计',
   personal: '个人项目',
@@ -24,9 +26,9 @@ const statusLabel = {
 }[entry.data.status];
 ---
 
-<article class="project-card content-card">
+<article class:list={['project-card', 'content-card', { 'project-card--showcase': variant === 'showcase' }]}>
   {entry.data.cover ? (
-    <img class="project-cover" src={withBase(entry.data.cover)} alt="" loading="lazy" />
+    <img class="project-cover" src={withBase(entry.data.cover)} alt={`${entry.data.title} 项目封面`} loading="lazy" />
   ) : (
     <div class="project-cover project-cover--placeholder" aria-hidden="true">
       <span>{String(entry.data.year).slice(-2)}</span>
@@ -41,6 +43,7 @@ const statusLabel = {
     </div>
     <h3><a href={withBase(`projects/${entry.id}/`)}>{entry.data.title}</a></h3>
     <p>{entry.data.summary}</p>
+    <ProjectAuthors authors={entry.data.authors} />
     <div class="project-bottom">
       <TagList tags={entry.data.tags} />
       <span class="read-more">查看项目 →</span>
@@ -89,6 +92,10 @@ const statusLabel = {
     padding: clamp(1.3rem, 3vw, 1.9rem);
   }
 
+  .project-content > :global(.project-authors) {
+    margin-bottom: var(--space-5);
+  }
+
   .meta-line span + span::before {
     margin-right: var(--space-3);
     color: var(--color-accent);
@@ -129,6 +136,47 @@ const statusLabel = {
     color: var(--color-accent-strong);
     font-size: 0.78rem;
     font-weight: 700;
+  }
+
+  .project-card--showcase {
+    display: grid;
+    min-height: 31rem;
+    grid-template-columns: minmax(0, 1.12fr) minmax(20rem, 0.88fr);
+    background: rgba(255, 251, 243, 0.92);
+  }
+
+  .project-card--showcase .project-cover {
+    height: 100%;
+    min-height: 31rem;
+    border-right: 1px solid var(--color-border);
+    border-bottom: 0;
+  }
+
+  .project-card--showcase .project-content {
+    min-height: 31rem;
+    padding: clamp(1.6rem, 4vw, 2.6rem);
+  }
+
+  .project-card--showcase h3 {
+    font-size: clamp(2rem, 4vw, 3.25rem);
+  }
+
+  @media (max-width: 820px) {
+    .project-card--showcase {
+      min-height: 0;
+      grid-template-columns: 1fr;
+    }
+
+    .project-card--showcase .project-cover {
+      height: clamp(13rem, 48vw, 20rem);
+      min-height: 0;
+      border-right: 0;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .project-card--showcase .project-content {
+      min-height: 22rem;
+    }
   }
 
   @media (max-width: 720px) {

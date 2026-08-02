@@ -1,0 +1,233 @@
+---
+import type { ProjectEntry } from '../../utils/content';
+import ProjectCard from '../cards/ProjectCard.astro';
+
+interface Props {
+  entries: ProjectEntry[];
+}
+
+const { entries } = Astro.props;
+---
+
+{entries.length > 0 && (
+  <div class="project-carousel" data-project-carousel tabindex="0" aria-label="精选学习项目轮播">
+    <div class="deck-stage" aria-live="polite">
+      {entries.map((entry, index) => (
+        <div class="deck-slide" data-project-slide data-position={String(index)}>
+          <div class="deck-card" data-carousel-card>
+            <ProjectCard entry={entry} variant="showcase" />
+          </div>
+          <button
+            class="deck-picker"
+            type="button"
+            data-carousel-pick
+            aria-label={`切换到项目：${entry.data.title}`}
+          ></button>
+        </div>
+      ))}
+    </div>
+
+    {entries.length > 1 && (
+      <div class="deck-controls">
+        <div class="deck-buttons">
+          <button type="button" data-carousel-prev aria-label="上一个项目">←</button>
+          <button type="button" data-carousel-next aria-label="下一个项目">→</button>
+        </div>
+        <p><span data-carousel-current>01</span><i></i><span>{String(entries.length).padStart(2, '0')}</span></p>
+        <small>点击后方卡片，或使用方向键切换</small>
+      </div>
+    )}
+  </div>
+)}
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-project-carousel]').forEach((carousel) => {
+    const slides = Array.from(carousel.querySelectorAll<HTMLElement>('[data-project-slide]'));
+    const current = carousel.querySelector<HTMLElement>('[data-carousel-current]');
+    const previous = carousel.querySelector<HTMLButtonElement>('[data-carousel-prev]');
+    const next = carousel.querySelector<HTMLButtonElement>('[data-carousel-next]');
+    let active = 0;
+    let pointerStart = 0;
+
+    const show = (target: number) => {
+      active = (target + slides.length) % slides.length;
+      slides.forEach((slide, index) => {
+        const position = (index - active + slides.length) % slides.length;
+        slide.dataset.position = String(position);
+        const card = slide.querySelector<HTMLElement>('[data-carousel-card]');
+        const picker = slide.querySelector<HTMLButtonElement>('[data-carousel-pick]');
+        card?.toggleAttribute('inert', position !== 0);
+        if (picker) picker.tabIndex = position === 0 ? -1 : 0;
+      });
+      if (current) current.textContent = String(active + 1).padStart(2, '0');
+    };
+
+    previous?.addEventListener('click', () => show(active - 1));
+    next?.addEventListener('click', () => show(active + 1));
+    slides.forEach((slide, index) => {
+      slide.querySelector('[data-carousel-pick]')?.addEventListener('click', () => show(index));
+    });
+
+    carousel.addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        show(active - 1);
+      }
+      if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        show(active + 1);
+      }
+    });
+
+    carousel.addEventListener('pointerdown', (event) => {
+      pointerStart = event.clientX;
+    });
+    carousel.addEventListener('pointerup', (event) => {
+      const distance = event.clientX - pointerStart;
+      if (Math.abs(distance) > 70) show(active + (distance < 0 ? 1 : -1));
+    });
+
+    show(0);
+  });
+</script>
+
+<style>
+  .project-carousel {
+    min-width: 0;
+    padding: var(--space-2) 0;
+  }
+
+  .deck-stage {
+    display: grid;
+    min-width: 0;
+    padding: var(--space-3) clamp(3.25rem, 9vw, 7.5rem) var(--space-5) var(--space-3);
+    isolation: isolate;
+  }
+
+  .deck-slide {
+    position: relative;
+    grid-area: 1 / 1;
+    min-width: 0;
+    transform-origin: 48% 84%;
+    transition: opacity 260ms ease, transform 420ms cubic-bezier(0.22, 0.8, 0.25, 1);
+  }
+
+  .deck-slide[data-position='0'] {
+    z-index: 5;
+    transform: translate(0, 0) rotate(-0.45deg);
+  }
+
+  .deck-slide[data-position='1'] {
+    z-index: 4;
+    transform: translate(clamp(2.7rem, 6vw, 5rem), 1.25rem) rotate(1.15deg) scale(0.985);
+  }
+
+  .deck-slide[data-position='2'] {
+    z-index: 3;
+    transform: translate(clamp(3.8rem, 8vw, 7rem), 2.1rem) rotate(2deg) scale(0.965);
+  }
+
+  .deck-slide[data-position='3'],
+  .deck-slide[data-position='4'] {
+    z-index: 2;
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(8rem, 2.8rem) rotate(2.5deg) scale(0.94);
+  }
+
+  .deck-picker {
+    position: absolute;
+    z-index: 3;
+    inset: 0;
+    display: block;
+    width: 100%;
+    border: 0;
+    border-radius: var(--radius-lg);
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .deck-slide[data-position='0'] .deck-picker {
+    display: none;
+  }
+
+  .deck-controls {
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+    gap: var(--space-4);
+    align-items: center;
+    margin-top: var(--space-3);
+    padding-left: var(--space-3);
+  }
+
+  .deck-buttons {
+    display: flex;
+    gap: var(--space-2);
+  }
+
+  .deck-buttons button {
+    display: grid;
+    width: 2.55rem;
+    height: 2.55rem;
+    place-items: center;
+    border: 1px solid var(--color-border-strong);
+    border-radius: 50%;
+    color: var(--color-text);
+    background: rgba(255, 251, 243, 0.68);
+    cursor: pointer;
+    transition: border-color var(--transition), background var(--transition), transform var(--transition);
+  }
+
+  .deck-buttons button:hover {
+    border-color: var(--color-accent);
+    background: var(--color-surface-strong);
+    transform: translateY(-1px);
+  }
+
+  .deck-controls p {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+    margin: 0;
+    color: var(--color-text-faint);
+    font: 650 0.66rem var(--font-mono);
+  }
+
+  .deck-controls p span:first-child {
+    color: var(--color-accent-strong);
+  }
+
+  .deck-controls i {
+    width: 2.5rem;
+    height: 1px;
+    background: var(--color-border-strong);
+  }
+
+  .deck-controls small {
+    color: var(--color-text-faint);
+    font-size: 0.68rem;
+  }
+
+  @media (max-width: 760px) {
+    .deck-stage {
+      padding-right: 2.4rem;
+      padding-left: 0.25rem;
+    }
+
+    .deck-slide[data-position='1'] {
+      transform: translate(1.6rem, 0.85rem) rotate(1deg) scale(0.985);
+    }
+
+    .deck-slide[data-position='2'] {
+      transform: translate(2.2rem, 1.45rem) rotate(1.7deg) scale(0.97);
+    }
+
+    .deck-controls {
+      grid-template-columns: auto 1fr;
+    }
+
+    .deck-controls small {
+      display: none;
+    }
+  }
+</style>

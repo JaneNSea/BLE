@@ -8,19 +8,25 @@ const { quote, attribution } = Astro.props;
 ---
 
 <figure class="project-review">
+  <figcaption>
+    <span class="reviewer-mark" aria-hidden="true">BIT</span>
+    <span class="reviewer-copy">
+      <small>课程教师评价</small>
+      <cite>{attribution}</cite>
+    </span>
+  </figcaption>
   <div class="quote-mark" aria-hidden="true">“</div>
   <blockquote>{quote}</blockquote>
-  <figcaption>
-    <span>Course review</span>
-    <cite>{attribution}</cite>
-  </figcaption>
 </figure>
 
 <style>
   .project-review {
     position: relative;
-    width: min(100%, 58rem);
-    margin: 0 auto var(--space-7);
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    margin: 0;
     padding: clamp(1.5rem, 4vw, 3rem);
     border: 1px solid rgba(143, 106, 44, 0.24);
     border-radius: var(--radius-lg);
@@ -42,25 +48,71 @@ const { quote, attribution } = Astro.props;
   blockquote {
     position: relative;
     z-index: 1;
-    margin: 0;
+    margin: var(--space-6) 0 0;
+    padding-top: var(--space-5);
+    border-top: 1px solid rgba(75, 56, 27, 0.18);
     font-family: var(--font-display);
     font-size: clamp(1.15rem, 2.3vw, 1.55rem);
     font-weight: 620;
     line-height: 1.75;
     white-space: pre-line;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 
   figcaption {
     display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
+    width: 100%;
+    min-width: 0;
     gap: var(--space-3);
-    margin-top: var(--space-6);
-    padding-top: var(--space-4);
-    border-top: 1px solid rgba(75, 56, 27, 0.18);
-    font-size: 0.72rem;
+    align-items: center;
   }
 
-  figcaption span { font: 750 0.64rem var(--font-mono); letter-spacing: 0.09em; text-transform: uppercase; }
-  cite { font-style: normal; }
+  .reviewer-mark {
+    display: grid;
+    width: 3.2rem;
+    height: 3.2rem;
+    flex: none;
+    place-items: center;
+    border: 1px solid rgba(75, 56, 27, 0.2);
+    border-radius: 50%;
+    color: #634820;
+    background: rgba(255, 250, 238, 0.5);
+    font: 760 0.72rem var(--font-mono);
+  }
+
+  .reviewer-copy {
+    display: block;
+    min-width: 0;
+  }
+
+  .reviewer-copy small {
+    display: block;
+    color: rgba(75, 56, 27, 0.66);
+    font: 750 0.6rem var(--font-mono);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  cite {
+    display: block;
+    margin-top: 0.12rem;
+    font-family: var(--font-display);
+    font-size: clamp(0.92rem, 1.8vw, 1.08rem);
+    font-style: normal;
+    font-weight: 720;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  @media (max-width: 560px) {
+    .project-review {
+      padding: var(--space-5);
+    }
+
+    blockquote {
+      font-size: 1.04rem;
+      line-height: 1.7;
+    }
+  }
 </style>

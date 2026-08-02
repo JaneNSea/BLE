@@ -1,6 +1,7 @@
 ---
 title: "BLE 设备控制台（示例）"
 summary: "一个用于发现、连接并调试低功耗蓝牙设备的桌面控制台案例骨架。"
+cover: "/images/projects/ble-console/cover.webp"
 publishedAt: 2026-07-24
 tags: ["BLE", "TypeScript", "State Machine"]
 featured: true
@@ -10,6 +11,10 @@ type: "personal"
 status: "completed"
 role: "独立设计与实现"
 year: 2026
+authors:
+  - name: "JaneNSea"
+    role: "独立作者"
+    avatar: "/avatar.jpg"
 ---
 
 > 示例项目用于确认页面结构。请用你的真实课程设计或 Demo 替换它。

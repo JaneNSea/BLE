@@ -2,7 +2,7 @@
 import { getCollection } from 'astro:content';
 import NoteRow from '../components/cards/NoteRow.astro';
 import ProductCard from '../components/cards/ProductCard.astro';
-import ProjectCard from '../components/cards/ProjectCard.astro';
+import ProjectStackCarousel from '../components/content/ProjectStackCarousel.astro';
 import SectionHeading from '../components/ui/SectionHeading.astro';
 import RepoStar from '../components/ui/RepoStar.astro';
 import CopyEmail from '../components/ui/CopyEmail.astro';
@@ -22,7 +22,7 @@ const publishedProducts = allProducts.filter(isPublished).sort(byPriority);
 const publishedProjects = allProjects.filter(isPublished).sort(byPriority);
 const publishedNotes = allNotes.filter(isPublished).sort(byDate);
 const featuredProduct = featured(allProducts)[0] ?? publishedProducts[0];
-const selectedProjects = featured(allProjects).slice(0, 2);
+const selectedProjects = featured(allProjects).slice(0, 5);
 const latestNotes = publishedNotes.slice(0, 4);
 const principles = allPrinciples
   .filter((entry) => !entry.data.draft)
@@ -116,8 +116,8 @@ const areas = [
     <section class="page-section shell">
       <SectionHeading
         eyebrow="Selected product"
-        title="当前重点产品"
-        description="这里保留最重要的商业项目，但它是一个明确入口，而不是覆盖整个首页的视觉舞台。"
+        title="重点孵化产品"
+        description="这里展示我们当前正在孵化、准备进入市场的产品。如果您对此感兴趣，无论您是技术专家还是投资人，都欢迎通过邮箱联系我们。"
         href="/products/"
         linkLabel="查看所有产品"
       />
@@ -125,32 +125,29 @@ const areas = [
     </section>
   )}
 
-  <section class="page-section shell recent-section">
-    <div class="recent-projects">
-      <SectionHeading
-        eyebrow="Selected projects"
-        title="精选学习项目"
-        href="/projects/"
-        linkLabel="全部项目"
-      />
-      {selectedProjects.length > 0 ? (
-        <div class="cards-grid">
-          {selectedProjects.map((entry) => <ProjectCard entry={entry} />)}
-        </div>
-      ) : (
-        <div class="empty-state">精选项目会显示在这里。</div>
-      )}
-    </div>
+  <section id="learning-projects" class="page-section shell project-showcase-section">
+    <SectionHeading
+      eyebrow="Selected projects"
+      title="精选学习项目"
+      description="把课程设计、技术实验与复盘过程叠成一组可翻阅的项目卡片。"
+      href="/projects/"
+      linkLabel="全部项目"
+    />
+    {selectedProjects.length > 0 ? (
+      <ProjectStackCarousel entries={selectedProjects} />
+    ) : (
+      <div class="empty-state">精选项目会显示在这里。</div>
+    )}
+  </section>
 
-    <div class="recent-notes">
-      <SectionHeading
-        eyebrow="Latest notes"
-        title="最近的技术笔记"
-        href="/notes/"
-        linkLabel="全部笔记"
-      />
-      <div>{latestNotes.map((entry) => <NoteRow entry={entry} />)}</div>
-    </div>
+  <section class="page-section shell recent-notes">
+    <SectionHeading
+      eyebrow="Latest notes"
+      title="最近的技术笔记"
+      href="/notes/"
+      linkLabel="全部笔记"
+    />
+    <div>{latestNotes.map((entry) => <NoteRow entry={entry} />)}</div>
   </section>
 
   <section class="page-section shell principles-section">
@@ -344,19 +341,8 @@ const areas = [
     transform: translateX(4px);
   }
 
-  .recent-section {
-    display: grid;
-    grid-template-columns: minmax(0, 1.05fr) minmax(20rem, 0.95fr);
-    gap: var(--space-7);
-  }
-
-  .recent-section :global(.project-card) {
-    grid-column: 1 / -1;
-  }
-
   .recent-notes {
-    padding-left: var(--space-7);
-    border-left: 1px solid var(--color-border);
+    max-width: var(--content-width);
   }
 
   .principles-section {
@@ -433,7 +419,6 @@ const areas = [
   @media (max-width: 900px) {
     .intro,
     .explore-section,
-    .recent-section,
     .principles-section {
       grid-template-columns: 1fr;
     }
@@ -464,11 +449,6 @@ const areas = [
       position: static;
     }
 
-    .recent-notes {
-      padding: var(--space-7) 0 0;
-      border-top: 1px solid var(--color-border);
-      border-left: 0;
-    }
   }
 
   @media (max-width: 620px) {

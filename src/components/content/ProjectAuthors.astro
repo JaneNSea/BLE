@@ -1,0 +1,126 @@
+---
+import { withBase } from '../../utils/url';
+
+interface Author {
+  name: string;
+  role?: string;
+  avatar?: string;
+  url?: string;
+}
+
+interface Props {
+  authors: Author[];
+  variant?: 'card' | 'hero';
+}
+
+const { authors, variant = 'card' } = Astro.props;
+---
+
+{authors.length > 0 && (
+  <div class:list={['project-authors', `project-authors--${variant}`]} aria-label="项目作者">
+    <div class="author-avatars" aria-hidden="true">
+      {authors.slice(0, 3).map((author) => (
+        author.avatar ? (
+          <img src={withBase(author.avatar)} alt="" width="42" height="42" loading="lazy" />
+        ) : (
+          <span>{author.name.slice(0, 1).toUpperCase()}</span>
+        )
+      ))}
+    </div>
+    <div class="author-copy">
+      <small>{authors.length > 1 ? '项目作者' : '作者'}</small>
+      <div>
+        {authors.map((author, index) => (
+          <span>
+            {author.url ? <a href={author.url} target="_blank" rel="noreferrer">{author.name}</a> : author.name}
+            {index < authors.length - 1 && '、'}
+          </span>
+        ))}
+      </div>
+      {variant === 'hero' && authors[0]?.role && <p>{authors.map((author) => author.role).filter(Boolean).join(' · ')}</p>}
+    </div>
+  </div>
+)}
+
+<style>
+  .project-authors {
+    display: flex;
+    min-width: 0;
+    gap: var(--space-3);
+    align-items: center;
+  }
+
+  .author-avatars {
+    display: flex;
+    flex: none;
+  }
+
+  .author-avatars img,
+  .author-avatars span {
+    width: 2rem;
+    height: 2rem;
+    border: 2px solid var(--color-surface-strong);
+    border-radius: 50%;
+    object-fit: cover;
+    background: var(--color-bg-soft);
+  }
+
+  .author-avatars span {
+    display: grid;
+    place-items: center;
+    color: var(--color-accent-strong);
+    font: 700 0.72rem var(--font-display);
+  }
+
+  .author-avatars > * + * {
+    margin-left: -0.55rem;
+  }
+
+  .author-copy {
+    min-width: 0;
+  }
+
+  .author-copy small {
+    display: block;
+    color: var(--color-text-faint);
+    font: 650 0.58rem var(--font-mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .author-copy div {
+    overflow: hidden;
+    margin-top: 0.05rem;
+    font-family: var(--font-display);
+    font-size: 0.86rem;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .author-copy a:hover {
+    color: var(--color-accent-strong);
+  }
+
+  .project-authors--hero {
+    margin-top: var(--space-5);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .project-authors--hero .author-avatars img,
+  .project-authors--hero .author-avatars span {
+    width: 2.65rem;
+    height: 2.65rem;
+  }
+
+  .project-authors--hero .author-copy div {
+    font-size: 1rem;
+  }
+
+  .author-copy p {
+    margin: 0.05rem 0 0;
+    color: var(--color-text-soft);
+    font-size: 0.7rem;
+  }
+</style>

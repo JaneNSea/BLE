@@ -1,7 +1,9 @@
 ---
 import BaseLayout from './BaseLayout.astro';
+import ProjectAuthors from '../components/content/ProjectAuthors.astro';
 import ProjectRepositories from '../components/content/ProjectRepositories.astro';
 import ProjectReview from '../components/content/ProjectReview.astro';
+import ProjectToc from '../components/content/ProjectToc.astro';
 import TagList from '../components/ui/TagList.astro';
 import { withBase } from '../utils/url';
 
@@ -16,6 +18,19 @@ interface Testimonial {
   attribution: string;
 }
 
+interface Author {
+  name: string;
+  role?: string;
+  avatar?: string;
+  url?: string;
+}
+
+interface Heading {
+  depth: number;
+  slug: string;
+  text: string;
+}
+
 interface Props {
   title: string;
   summary: string;
@@ -24,6 +39,8 @@ interface Props {
   role: string;
   course?: string;
   tags?: string[];
+  authors?: Author[];
+  headings?: Heading[];
   repositories?: Repository[];
   legacyRepo?: string;
   testimonial?: Testimonial;
@@ -39,6 +56,8 @@ const {
   role,
   course,
   tags = [],
+  authors = [],
+  headings = [],
   repositories = [],
   legacyRepo,
   testimonial,
@@ -52,9 +71,10 @@ const {
     <header class="learning-hero shell">
       <a class="back-link" href={withBase(backHref)}>← {backLabel}</a>
       <div class="hero-grid">
-        <div>
+        <div class="hero-title">
           <p class="eyebrow">Learning project / Course work</p>
           <h1>{title}</h1>
+          <ProjectAuthors authors={authors} variant="hero" />
         </div>
         <div class="hero-context">
           <p>{summary}</p>
@@ -70,49 +90,73 @@ const {
     </header>
 
     <div class="learning-intro shell">
+      <header class="evidence-heading">
+        <p class="eyebrow">Project evidence</p>
+        <h2>来自课程评价与代码实践的旁证</h2>
+        <p>先了解项目由谁完成、如何被评价，以及代码如何拆分，再进入完整的设计与学习记录。</p>
+      </header>
       {testimonial && <ProjectReview quote={testimonial.quote} attribution={testimonial.attribution} />}
       <ProjectRepositories repositories={repositories} legacyRepo={legacyRepo} />
     </div>
 
-    <div class="learning-body shell">
-      <div class="learning-label" aria-hidden="true"><span>Full report</span><small>保留课程设计原始叙述</small></div>
-      <div class="prose"><slot /></div>
-    </div>
+    <section id="full-report" class="report-section">
+      <header class="report-heading shell">
+        <p class="eyebrow">Full report</p>
+        <div>
+          <h2>完整的技术学习与设计记录</h2>
+          <p>正文保留课程设计的原始叙述，并按照报告章节提供目录，方便按主题阅读。</p>
+        </div>
+      </header>
+      <div class="learning-body shell">
+        <ProjectToc headings={headings} />
+        <div class="prose"><slot /></div>
+      </div>
+    </section>
   </article>
 </BaseLayout>
 
 <style>
   .learning-page { --reading-width: 54rem; }
-  .learning-hero { padding-block: var(--space-8); border-bottom: 1px solid var(--color-border); }
-  .back-link { display: inline-block; margin-bottom: var(--space-7); color: var(--color-text-soft); font-size: 0.84rem; }
+  .learning-hero { padding-block: var(--space-6) var(--space-7); border-bottom: 1px solid var(--color-border); }
+  .back-link { display: inline-block; margin-bottom: var(--space-5); color: var(--color-text-soft); font-size: 0.84rem; }
   .back-link:hover { color: var(--color-accent-strong); }
-  .hero-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(21rem, 0.9fr); gap: clamp(2rem, 7vw, 7rem); align-items: end; }
+  .hero-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(21rem, 0.9fr); gap: clamp(2rem, 7vw, 7rem); align-items: start; }
   h1 { max-width: 13ch; margin: 0; font-family: var(--font-display); font-size: clamp(3rem, 6vw, 5.5rem); font-weight: 650; letter-spacing: -0.055em; line-height: 1.02; }
+  .hero-context { padding-top: 1.9rem; }
   .hero-context > p { margin: 0 0 var(--space-5); color: var(--color-text-soft); font-size: 1rem; }
   dl { display: grid; grid-template-columns: repeat(2, 1fr); margin: 0 0 var(--space-5); border-block: 1px solid var(--color-border); }
   dl div { padding-block: var(--space-3); }
   dl div:nth-child(even) { padding-left: var(--space-4); border-left: 1px solid var(--color-border); }
   dt { color: var(--color-text-faint); font: 650 0.62rem var(--font-mono); }
   dd { margin: var(--space-1) 0 0; font-family: var(--font-display); font-size: 0.9rem; font-weight: 650; }
-  .learning-intro { padding-top: var(--space-8); }
-  .learning-body { display: grid; min-width: 0; grid-template-columns: 8rem minmax(0, 1fr); gap: clamp(1rem, 4vw, 4rem); padding-block: var(--space-7) var(--space-9); }
-  .learning-label { position: sticky; top: 7rem; align-self: start; padding-top: var(--space-2); color: var(--color-text-faint); }
-  .learning-label span, .learning-label small { display: block; }
-  .learning-label span { color: var(--color-accent-strong); font: 750 0.65rem var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; }
-  .learning-label small { margin-top: var(--space-2); font-size: 0.67rem; line-height: 1.5; }
+  .learning-intro { display: grid; width: min(calc(100% - 2rem), 64rem); gap: var(--space-5); padding-block: var(--space-7); }
+  .learning-intro > *, .hero-grid > *, .learning-body > * { min-width: 0; }
+  .evidence-heading { display: grid; grid-template-columns: minmax(0, 1fr) minmax(18rem, 0.75fr); gap: var(--space-4) var(--space-7); align-items: end; padding-bottom: var(--space-3); }
+  .evidence-heading .eyebrow { grid-column: 1 / -1; margin-bottom: 0; }
+  .evidence-heading h2, .report-heading h2 { margin: 0; font-family: var(--font-display); font-size: clamp(1.9rem, 4vw, 3rem); font-weight: 650; letter-spacing: -0.04em; line-height: 1.14; }
+  .evidence-heading > p:last-child, .report-heading > div > p { margin: 0; color: var(--color-text-soft); font-size: 0.84rem; }
+  .report-section { border-top: 1px solid var(--color-border); background: rgba(255, 251, 243, 0.22); }
+  .report-heading { display: grid; grid-template-columns: minmax(10rem, 0.33fr) minmax(0, 1fr); gap: clamp(1.5rem, 5vw, 5rem); padding-top: var(--space-7); }
+  .report-heading .eyebrow { margin-top: 0.55rem; }
+  .report-heading > div { display: flex; justify-content: space-between; gap: var(--space-5); align-items: end; }
+  .report-heading > div > p { max-width: 28rem; }
+  .learning-body { display: grid; min-width: 0; grid-template-columns: minmax(12rem, 0.34fr) minmax(0, 1fr); gap: clamp(1.5rem, 5vw, 5rem); padding-block: var(--space-6) var(--space-9); }
   .prose { min-width: 0; max-width: 100%; margin: 0; overflow-wrap: anywhere; }
   .prose :global(> h2:first-child) { margin-top: 0; }
 
-  @media (max-width: 820px) {
+  @media (max-width: 900px) {
     .hero-grid { grid-template-columns: 1fr; }
-    .hero-context { max-width: 42rem; }
+    .hero-context { max-width: 42rem; padding-top: 0; }
+    .evidence-heading { grid-template-columns: 1fr; }
+    .report-heading { grid-template-columns: 1fr; gap: var(--space-2); }
+    .report-heading .eyebrow { margin: 0; }
+    .report-heading > div { align-items: start; flex-direction: column; }
     .learning-body { grid-template-columns: 1fr; }
-    .learning-label { position: static; display: flex; gap: var(--space-3); align-items: baseline; }
-    .learning-label small { margin: 0; }
   }
 
   @media (max-width: 520px) {
-    .learning-hero { padding-block: var(--space-7); }
+    .learning-hero { padding-block: var(--space-5) var(--space-6); }
+    .back-link { margin-bottom: var(--space-4); }
     dl { grid-template-columns: 1fr; }
     dl div:nth-child(even) { padding-left: 0; border-left: 0; }
     dl div + div { border-top: 1px solid var(--color-border); }

@@ -13,7 +13,7 @@ interface Props {
 }
 
 const { entry } = Astro.props;
-const { Content } = await render(entry);
+const { Content, headings } = await render(entry);
 const statusLabel = {
   concept: '概念阶段',
   building: '开发中',
@@ -30,6 +30,8 @@ const statusLabel = {
   period={entry.data.period ?? String(entry.data.year)}
   course={entry.data.course}
   tags={entry.data.tags}
+  authors={entry.data.authors}
+  headings={headings}
   repositories={entry.data.repositories}
   legacyRepo={entry.data.repo}
   testimonial={entry.data.testimonial}

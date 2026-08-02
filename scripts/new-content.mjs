@@ -50,6 +50,10 @@ status: "building"
 role: "独立完成"
 year: ${new Date().getFullYear()}
 period: "${new Date().getFullYear()} 年"
+authors:
+  - name: "JaneNSea"
+    role: "独立作者"
+    avatar: "/avatar.jpg"
 repositories: []
 ---
 

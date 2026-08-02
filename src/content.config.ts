@@ -38,6 +38,16 @@ const projects = defineCollection({
     year: z.number().int(),
     period: z.string().optional(),
     course: z.string().optional(),
+    authors: z
+      .array(
+        z.object({
+          name: z.string(),
+          role: z.string().optional(),
+          avatar: z.string().optional(),
+          url: z.url().optional(),
+        }),
+      )
+      .default([]),
     repositories: z
       .array(
         z.object({

@@ -1,0 +1,133 @@
+---
+interface Heading {
+  depth: number;
+  slug: string;
+  text: string;
+}
+
+interface Props {
+  headings: Heading[];
+}
+
+const { headings } = Astro.props;
+const chapters = headings.filter((heading) => heading.depth === 2);
+---
+
+{chapters.length > 0 && (
+  <aside class="project-toc" aria-label="项目报告目录">
+    <details open>
+      <summary>
+        <span><small>Contents</small>目录</span>
+        <b>{String(chapters.length).padStart(2, '0')}</b>
+      </summary>
+      <ol>
+        {chapters.map((heading, index) => (
+          <li>
+            <a href={`#${heading.slug}`}>
+              <span>{String(index + 1).padStart(2, '0')}</span>
+              {heading.text}
+            </a>
+          </li>
+        ))}
+      </ol>
+    </details>
+  </aside>
+)}
+
+<style>
+  .project-toc {
+    position: sticky;
+    top: 6.5rem;
+    align-self: start;
+    max-height: calc(100vh - 8rem);
+    overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+  }
+
+  details {
+    padding: var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: rgba(255, 251, 243, 0.58);
+  }
+
+  summary {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-3);
+    align-items: end;
+    cursor: pointer;
+    list-style: none;
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    font-weight: 700;
+  }
+
+  summary::-webkit-details-marker {
+    display: none;
+  }
+
+  summary small {
+    display: block;
+    margin-bottom: 0.08rem;
+    color: var(--color-accent-strong);
+    font: 750 0.56rem var(--font-mono);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  summary b {
+    color: var(--color-text-faint);
+    font: 650 0.64rem var(--font-mono);
+  }
+
+  ol {
+    display: grid;
+    gap: 0.15rem;
+    margin: var(--space-4) 0 0;
+    padding: var(--space-4) 0 0;
+    border-top: 1px solid var(--color-border);
+    list-style: none;
+  }
+
+  a {
+    display: grid;
+    grid-template-columns: 1.5rem minmax(0, 1fr);
+    gap: var(--space-2);
+    padding: 0.38rem 0;
+    color: var(--color-text-soft);
+    font-size: 0.7rem;
+    line-height: 1.42;
+    transition: color var(--transition), transform var(--transition);
+  }
+
+  a span {
+    color: var(--color-text-faint);
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+  }
+
+  a:hover {
+    color: var(--color-accent-strong);
+    transform: translateX(2px);
+  }
+
+  @media (max-width: 900px) {
+    .project-toc {
+      position: static;
+      max-height: none;
+      overflow: visible;
+    }
+
+    ol {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 560px) {
+    ol {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
