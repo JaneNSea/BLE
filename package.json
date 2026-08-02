@@ -1,7 +1,14 @@
 {
   "name": "personal-technology-portfolio",
   "version": "0.1.0",
+  "description": "JaneNSea 的个人技术品牌站：产品、学习项目、技术笔记与工程判断。",
   "private": true,
+  "license": "MIT",
+  "homepage": "https://janensea.github.io/BLE/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JaneNSea/BLE.git"
+  },
   "type": "module",
   "scripts": {
     "dev": "astro dev",
