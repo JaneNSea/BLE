@@ -20,6 +20,7 @@ authors:
 repositories:
   - label: "STM32 嵌入式端仓库"
     stack: "STM32 · C · ESP8266 · OneNET"
+    url: "https://gitcode.com/JaneNSea/STC_SYSTEM"
 ---
 
 ## 项目背景：让太阳能地暖按真实需求供热

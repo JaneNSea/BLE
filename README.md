@@ -163,7 +163,7 @@ export const site = {
   avatar: '/avatar.jpg',
   social: {
     github: 'https://github.com/your-name',
-    gitee: 'https://gitee.com/your-name',
+    gitcode: 'https://gitcode.com/your-name',
   },
   repository: {
     slug: 'your-name/your-repo',
