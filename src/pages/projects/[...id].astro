@@ -1,6 +1,6 @@
 ---
 import { getCollection, render, type CollectionEntry } from 'astro:content';
-import ContentLayout from '../../layouts/ContentLayout.astro';
+import ProjectLayout from '../../layouts/ProjectLayout.astro';
 import { isPublished } from '../../utils/content';
 
 export async function getStaticPaths() {
@@ -14,24 +14,34 @@ interface Props {
 
 const { entry } = Astro.props;
 const { Content } = await render(entry);
+const statusLabel = {
+  concept: '概念阶段',
+  building: '开发中',
+  mvp: 'MVP',
+  beta: 'Beta',
+  completed: '已完成',
+  maintained: '持续维护',
+}[entry.data.status];
 ---
 
-<ContentLayout
-  eyebrow="Learning project"
+<ProjectLayout
   title={entry.data.title}
   summary={entry.data.summary}
-  publishedAt={entry.data.publishedAt}
-  updatedAt={entry.data.updatedAt}
+  period={entry.data.period ?? String(entry.data.year)}
+  course={entry.data.course}
   tags={entry.data.tags}
+  repositories={entry.data.repositories}
+  legacyRepo={entry.data.repo}
+  testimonial={entry.data.testimonial}
   backHref="/projects/"
   backLabel="返回项目列表"
-  status={`${entry.data.year} · ${entry.data.status} · ${entry.data.role}`}
+  status={statusLabel}
+  role={entry.data.role}
 >
   <Content />
-  {(entry.data.repo || entry.data.demo) && (
+  {entry.data.demo && (
     <div class="button-row">
-      {entry.data.repo && <a class="button button--primary" href={entry.data.repo}>查看代码仓库 ↗</a>}
-      {entry.data.demo && <a class="button" href={entry.data.demo}>在线演示 ↗</a>}
+      <a class="button" href={entry.data.demo}>在线演示 ↗</a>
     </div>
   )}
-</ContentLayout>
+</ProjectLayout>

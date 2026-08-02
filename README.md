@@ -62,6 +62,13 @@ npm run new:product -- product-codename
 可参考 `src/content/products/superme.mdx`。技术图需要在正文和图注中明确区分
 “已实现”“正在完善”和“规划设计”，避免把目标架构写成已上线能力。
 
+学习项目支持在 frontmatter 中补充 `period`、`course`、`repositories` 和
+`testimonial`。其中 `repositories` 可以同时列出前端、后端等多个仓库；暂时没有
+公开地址时省略 `url`，页面会显示“地址待补充”，补上 URL 后会自动变成访问按钮。
+教师或课程评价使用 `testimonial.quote` 和 `testimonial.attribution`，由学习项目
+专用布局统一展示。可参考
+`src/content/projects/agent-quant-trading-system.mdx`。
+
 ## GitHub Pages
 
 工作流位于 `.github/workflows/deploy-pages.yml`。如果仓库名是

@@ -14,6 +14,14 @@ const typeLabels = {
   experiment: '技术实验',
   'open-source': '开源项目',
 };
+const statusLabel = {
+  concept: '概念阶段',
+  building: '开发中',
+  mvp: 'MVP',
+  beta: 'Beta',
+  completed: '已完成',
+  maintained: '持续维护',
+}[entry.data.status];
 ---
 
 <article class="project-card content-card">
@@ -29,7 +37,7 @@ const typeLabels = {
     <div class="meta-line">
       <span>{typeLabels[entry.data.type]}</span>
       <span>{entry.data.year}</span>
-      <span>{entry.data.status}</span>
+      <span>{statusLabel}</span>
     </div>
     <h3><a href={withBase(`projects/${entry.id}/`)}>{entry.data.title}</a></h3>
     <p>{entry.data.summary}</p>

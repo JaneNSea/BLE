@@ -49,6 +49,8 @@ type: "personal"
 status: "building"
 role: "独立完成"
 year: ${new Date().getFullYear()}
+period: "${new Date().getFullYear()} 年"
+repositories: []
 ---
 
 ## 背景与目标

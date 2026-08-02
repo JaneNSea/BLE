@@ -1,0 +1,98 @@
+---
+interface Repository {
+  label: string;
+  stack?: string;
+  url?: string;
+}
+
+interface Props {
+  repositories: Repository[];
+  legacyRepo?: string;
+}
+
+const { repositories, legacyRepo } = Astro.props;
+const items = repositories.length > 0
+  ? repositories
+  : legacyRepo
+    ? [{ label: '项目代码仓库', url: legacyRepo }]
+    : [];
+---
+
+{items.length > 0 && (
+  <section class="repository-shelf" aria-labelledby="repository-title">
+    <div class="shelf-heading">
+      <span>Code repositories</span>
+      <h2 id="repository-title">代码仓库</h2>
+      <p>课程项目按职责拆分代码；尚未确定公开地址的仓库会明确标记，后续补充 URL 即可启用访问按钮。</p>
+    </div>
+    <div class="repository-list">
+      {items.map((repository, index) => (
+        <article>
+          <small>{String(index + 1).padStart(2, '0')}</small>
+          <div>
+            <h3>{repository.label}</h3>
+            {repository.stack && <p>{repository.stack}</p>}
+          </div>
+          {repository.url ? (
+            <a href={repository.url} target="_blank" rel="noreferrer">访问仓库 ↗</a>
+          ) : (
+            <span class="pending">地址待补充</span>
+          )}
+        </article>
+      ))}
+    </div>
+  </section>
+)}
+
+<style>
+  .repository-shelf {
+    display: grid;
+    grid-template-columns: minmax(14rem, 0.72fr) minmax(0, 1.28fr);
+    gap: clamp(1.5rem, 5vw, 4rem);
+    width: min(100%, 58rem);
+    margin: 0 auto var(--space-8);
+    padding: clamp(1.25rem, 3vw, 2rem);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: rgba(255, 251, 243, 0.68);
+    box-shadow: var(--shadow-card);
+  }
+
+  .shelf-heading > span {
+    color: var(--color-accent-strong);
+    font: 750 0.64rem var(--font-mono);
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+  }
+
+  h2 { margin: var(--space-3) 0; font-family: var(--font-display); font-size: clamp(1.7rem, 3vw, 2.35rem); }
+  .shelf-heading p { margin: 0; color: var(--color-text-soft); font-size: 0.78rem; }
+  .repository-list { display: grid; gap: var(--space-2); }
+
+  article {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: var(--space-3);
+    align-items: center;
+    padding: var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.48);
+  }
+
+  article small { color: var(--color-accent); font-family: var(--font-mono); }
+  article h3 { margin: 0; font-size: 0.94rem; }
+  article p { margin: var(--space-1) 0 0; color: var(--color-text-faint); font-size: 0.7rem; }
+  article a, .pending { font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
+  article a { color: var(--color-accent-strong); }
+  .pending { padding: 0.28rem 0.55rem; border-radius: 999px; color: var(--color-text-faint); background: var(--color-bg-soft); }
+
+  @media (max-width: 700px) {
+    .repository-shelf { grid-template-columns: 1fr; margin-bottom: var(--space-7); }
+  }
+
+  @media (max-width: 480px) {
+    article { grid-template-columns: auto 1fr; }
+    article a, .pending { grid-column: 2; justify-self: start; }
+  }
+</style>

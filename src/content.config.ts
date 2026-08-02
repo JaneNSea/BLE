@@ -36,6 +36,23 @@ const projects = defineCollection({
     repo: z.url().optional(),
     demo: z.url().optional(),
     year: z.number().int(),
+    period: z.string().optional(),
+    course: z.string().optional(),
+    repositories: z
+      .array(
+        z.object({
+          label: z.string(),
+          stack: z.string().optional(),
+          url: z.url().optional(),
+        }),
+      )
+      .default([]),
+    testimonial: z
+      .object({
+        quote: z.string(),
+        attribution: z.string(),
+      })
+      .optional(),
   }),
 });
 

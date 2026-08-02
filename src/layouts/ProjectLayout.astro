@@ -1,0 +1,120 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import ProjectRepositories from '../components/content/ProjectRepositories.astro';
+import ProjectReview from '../components/content/ProjectReview.astro';
+import TagList from '../components/ui/TagList.astro';
+import { withBase } from '../utils/url';
+
+interface Repository {
+  label: string;
+  stack?: string;
+  url?: string;
+}
+
+interface Testimonial {
+  quote: string;
+  attribution: string;
+}
+
+interface Props {
+  title: string;
+  summary: string;
+  period: string;
+  status: string;
+  role: string;
+  course?: string;
+  tags?: string[];
+  repositories?: Repository[];
+  legacyRepo?: string;
+  testimonial?: Testimonial;
+  backHref: string;
+  backLabel: string;
+}
+
+const {
+  title,
+  summary,
+  period,
+  status,
+  role,
+  course,
+  tags = [],
+  repositories = [],
+  legacyRepo,
+  testimonial,
+  backHref,
+  backLabel,
+} = Astro.props;
+---
+
+<BaseLayout title={`${title} — Learning project`} description={summary}>
+  <article class="learning-page">
+    <header class="learning-hero shell">
+      <a class="back-link" href={withBase(backHref)}>← {backLabel}</a>
+      <div class="hero-grid">
+        <div>
+          <p class="eyebrow">Learning project / Course work</p>
+          <h1>{title}</h1>
+        </div>
+        <div class="hero-context">
+          <p>{summary}</p>
+          <dl>
+            <div><dt>时间</dt><dd>{period}</dd></div>
+            {course && <div><dt>课程</dt><dd>{course}</dd></div>}
+            <div><dt>状态</dt><dd>{status}</dd></div>
+            <div><dt>职责</dt><dd>{role}</dd></div>
+          </dl>
+          <TagList tags={tags} />
+        </div>
+      </div>
+    </header>
+
+    <div class="learning-intro shell">
+      {testimonial && <ProjectReview quote={testimonial.quote} attribution={testimonial.attribution} />}
+      <ProjectRepositories repositories={repositories} legacyRepo={legacyRepo} />
+    </div>
+
+    <div class="learning-body shell">
+      <div class="learning-label" aria-hidden="true"><span>Full report</span><small>保留课程设计原始叙述</small></div>
+      <div class="prose"><slot /></div>
+    </div>
+  </article>
+</BaseLayout>
+
+<style>
+  .learning-page { --reading-width: 54rem; }
+  .learning-hero { padding-block: var(--space-8); border-bottom: 1px solid var(--color-border); }
+  .back-link { display: inline-block; margin-bottom: var(--space-7); color: var(--color-text-soft); font-size: 0.84rem; }
+  .back-link:hover { color: var(--color-accent-strong); }
+  .hero-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(21rem, 0.9fr); gap: clamp(2rem, 7vw, 7rem); align-items: end; }
+  h1 { max-width: 13ch; margin: 0; font-family: var(--font-display); font-size: clamp(3rem, 6vw, 5.5rem); font-weight: 650; letter-spacing: -0.055em; line-height: 1.02; }
+  .hero-context > p { margin: 0 0 var(--space-5); color: var(--color-text-soft); font-size: 1rem; }
+  dl { display: grid; grid-template-columns: repeat(2, 1fr); margin: 0 0 var(--space-5); border-block: 1px solid var(--color-border); }
+  dl div { padding-block: var(--space-3); }
+  dl div:nth-child(even) { padding-left: var(--space-4); border-left: 1px solid var(--color-border); }
+  dt { color: var(--color-text-faint); font: 650 0.62rem var(--font-mono); }
+  dd { margin: var(--space-1) 0 0; font-family: var(--font-display); font-size: 0.9rem; font-weight: 650; }
+  .learning-intro { padding-top: var(--space-8); }
+  .learning-body { display: grid; min-width: 0; grid-template-columns: 8rem minmax(0, 1fr); gap: clamp(1rem, 4vw, 4rem); padding-block: var(--space-7) var(--space-9); }
+  .learning-label { position: sticky; top: 7rem; align-self: start; padding-top: var(--space-2); color: var(--color-text-faint); }
+  .learning-label span, .learning-label small { display: block; }
+  .learning-label span { color: var(--color-accent-strong); font: 750 0.65rem var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; }
+  .learning-label small { margin-top: var(--space-2); font-size: 0.67rem; line-height: 1.5; }
+  .prose { min-width: 0; max-width: 100%; margin: 0; overflow-wrap: anywhere; }
+  .prose :global(> h2:first-child) { margin-top: 0; }
+
+  @media (max-width: 820px) {
+    .hero-grid { grid-template-columns: 1fr; }
+    .hero-context { max-width: 42rem; }
+    .learning-body { grid-template-columns: 1fr; }
+    .learning-label { position: static; display: flex; gap: var(--space-3); align-items: baseline; }
+    .learning-label small { margin: 0; }
+  }
+
+  @media (max-width: 520px) {
+    .learning-hero { padding-block: var(--space-7); }
+    dl { grid-template-columns: 1fr; }
+    dl div:nth-child(even) { padding-left: 0; border-left: 0; }
+    dl div + div { border-top: 1px solid var(--color-border); }
+  }
+</style>

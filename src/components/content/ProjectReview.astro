@@ -1,0 +1,66 @@
+---
+interface Props {
+  quote: string;
+  attribution: string;
+}
+
+const { quote, attribution } = Astro.props;
+---
+
+<figure class="project-review">
+  <div class="quote-mark" aria-hidden="true">“</div>
+  <blockquote>{quote}</blockquote>
+  <figcaption>
+    <span>Course review</span>
+    <cite>{attribution}</cite>
+  </figcaption>
+</figure>
+
+<style>
+  .project-review {
+    position: relative;
+    width: min(100%, 58rem);
+    margin: 0 auto var(--space-7);
+    padding: clamp(1.5rem, 4vw, 3rem);
+    border: 1px solid rgba(143, 106, 44, 0.24);
+    border-radius: var(--radius-lg);
+    color: #4b381b;
+    background: linear-gradient(145deg, #ead29a, #dec080 68%, #ead9b2);
+    box-shadow: 0 20px 55px rgba(104, 72, 23, 0.12);
+  }
+
+  .quote-mark {
+    position: absolute;
+    top: -0.15em;
+    right: var(--space-5);
+    font-family: var(--font-display);
+    font-size: clamp(6rem, 14vw, 10rem);
+    line-height: 1;
+    opacity: 0.12;
+  }
+
+  blockquote {
+    position: relative;
+    z-index: 1;
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(1.15rem, 2.3vw, 1.55rem);
+    font-weight: 620;
+    line-height: 1.75;
+    white-space: pre-line;
+  }
+
+  figcaption {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-top: var(--space-6);
+    padding-top: var(--space-4);
+    border-top: 1px solid rgba(75, 56, 27, 0.18);
+    font-size: 0.72rem;
+  }
+
+  figcaption span { font: 750 0.64rem var(--font-mono); letter-spacing: 0.09em; text-transform: uppercase; }
+  cite { font-style: normal; }
+</style>

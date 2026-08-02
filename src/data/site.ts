@@ -11,6 +11,7 @@ export const site = {
   resume: '/resume.pdf',
   social: {
     github: 'https://github.com/JaneNSea',
+    gitee: 'https://gitee.com/janensea',
   },
   repository: {
     slug: 'JaneNSea/BLE',
