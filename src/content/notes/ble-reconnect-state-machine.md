@@ -3,6 +3,7 @@ title: "BLE 断线重连：先把连接流程建模成状态机"
 summary: "当扫描、连接和超时回调互相穿插时，用显式状态转换避免旧请求污染新连接。"
 publishedAt: 2026-07-30
 tags: ["BLE", "State Machine"]
+listingTags: ["前端", "TypeScript"]
 featured: true
 priority: 20
 draft: false

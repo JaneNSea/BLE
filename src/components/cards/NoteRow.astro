@@ -11,6 +11,7 @@ const date = entry.data.publishedLabel ?? new Intl.DateTimeFormat('zh-CN', {
   year: 'numeric',
   month: '2-digit',
 }).format(entry.data.publishedAt);
+const listingTags = entry.data.listingTags.length > 0 ? entry.data.listingTags : entry.data.tags.slice(0, 2);
 ---
 
 <article class="note-row">
@@ -19,10 +20,11 @@ const date = entry.data.publishedLabel ?? new Intl.DateTimeFormat('zh-CN', {
     <h3><a href={withBase(`notes/${entry.id}/`)}>{entry.data.title}</a></h3>
     <p>{entry.data.summary}</p>
   </div>
-  <div class="note-meta">
-    <span>{entry.data.tags[0] ?? '技术笔记'}</span>
-    {entry.data.readingMinutes && <span>{entry.data.readingMinutes} 分钟</span>}
-  </div>
+  {listingTags.length > 0 && (
+    <ul class="note-tags" aria-label="文章分类">
+      {listingTags.map((tag) => <li>{tag}</li>)}
+    </ul>
+  )}
 </article>
 
 <style>
@@ -46,8 +48,7 @@ const date = entry.data.publishedLabel ?? new Intl.DateTimeFormat('zh-CN', {
     background: rgba(255, 251, 243, 0.4);
   }
 
-  time,
-  .note-meta {
+  time {
     color: var(--color-text-faint);
     font-size: 0.7rem;
   }
@@ -74,11 +75,26 @@ const date = entry.data.publishedLabel ?? new Intl.DateTimeFormat('zh-CN', {
     line-height: 1.6;
   }
 
-  .note-meta {
+  .note-tags {
     display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: var(--space-1);
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    justify-content: flex-end;
+    max-width: 11rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .note-tags li {
+    padding: 0.22rem 0.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    color: var(--color-text-soft);
+    background: rgba(255, 251, 243, 0.68);
+    font-size: 0.64rem;
+    line-height: 1.35;
+    white-space: nowrap;
   }
 
   @media (max-width: 620px) {
@@ -92,10 +108,10 @@ const date = entry.data.publishedLabel ?? new Intl.DateTimeFormat('zh-CN', {
       grid-row: 2;
     }
 
-    .note-meta {
-      flex-direction: row;
+    .note-tags {
       grid-column: 2;
       grid-row: 1;
+      max-width: 10rem;
     }
   }
 </style>

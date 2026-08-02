@@ -22,6 +22,7 @@ title: "待填写：技术问题"
 summary: "用一句话说明问题、触发条件和解法。"
 publishedAt: ${today}
 tags: ["待分类"]
+listingTags: ["开发方向", "编程语言"]
 featured: false
 priority: 0
 draft: true

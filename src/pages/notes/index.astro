@@ -6,10 +6,12 @@ import { byDate, isPublished } from '../../utils/content';
 import { withBase } from '../../utils/url';
 
 const notes = (await getCollection('notes')).filter(isPublished).sort(byDate);
-const tags = [...new Set(notes.flatMap((entry) => entry.data.tags))]
+const listingTagsFor = (entry: (typeof notes)[number]) =>
+  entry.data.listingTags.length > 0 ? entry.data.listingTags : entry.data.tags.slice(0, 2);
+const tags = [...new Set(notes.flatMap(listingTagsFor))]
   .sort((left, right) => left.localeCompare(right, 'zh-CN'));
 const tagCounts = new Map(
-  tags.map((tag) => [tag, notes.filter((entry) => entry.data.tags.includes(tag)).length]),
+  tags.map((tag) => [tag, notes.filter((entry) => listingTagsFor(entry).includes(tag)).length]),
 );
 ---
 
@@ -90,8 +92,13 @@ const tagCounts = new Map(
             <div
               class="note-result"
               data-note-item
-              data-tags={entry.data.tags.join('|')}
-              data-search={[entry.data.title, entry.data.summary, ...entry.data.tags].join(' ')}
+              data-tags={listingTagsFor(entry).join('|')}
+              data-search={[
+                entry.data.title,
+                entry.data.summary,
+                ...listingTagsFor(entry),
+                ...entry.data.tags,
+              ].join(' ')}
             >
               <NoteRow entry={entry} />
             </div>

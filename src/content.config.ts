@@ -22,6 +22,7 @@ const notes = defineCollection({
   schema: z.object({
     ...commonShowcaseFields,
     publishedLabel: z.string().optional(),
+    listingTags: z.array(z.string()).default([]),
     readingMinutes: z.number().int().positive().optional(),
     relatedProjects: z.array(z.string()).default([]),
   }),

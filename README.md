@@ -208,6 +208,7 @@ title: "BLE 重连为什么会进入假连接状态"
 summary: "说明问题、触发条件和最终解法。"
 publishedAt: 2026-08-02
 tags: ["BLE", "State Machine"]
+listingTags: ["前端", "TypeScript"]
 featured: true
 priority: 30
 draft: false
@@ -215,7 +216,7 @@ readingMinutes: 6
 ---
 ```
 
-短文章推荐使用 Markdown，并保持“问题 → 原因 → 解法 → 边界”的结构。
+`tags` 用于详细页，可填写具体框架、协议和技术概念；`listingTags` 只用于列表卡片与筛选，建议保留“开发方向 + 编程语言”，例如 `前端 + TypeScript` 或 `嵌入式 + C`。短文章推荐使用 Markdown，并保持“问题 → 原因 → 解法 → 边界”的结构。Codex 跨会话录入技术文档时必须遵循 [`docs/CODEX_TECHNICAL_NOTE_GUIDE.md`](./docs/CODEX_TECHNICAL_NOTE_GUIDE.md)。
 
 ### 学习项目
 
