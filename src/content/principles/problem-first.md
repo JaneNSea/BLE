@@ -2,7 +2,6 @@
 title: "先定义问题，再选择技术"
 summary: "技术栈不是起点。先明确用户、约束与可验证的成功标准。"
 order: 1
-evidence: "关联真实项目后，这里写决策证据"
 draft: false
 ---
 

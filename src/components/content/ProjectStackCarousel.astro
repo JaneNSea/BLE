@@ -34,7 +34,6 @@ const { entries } = Astro.props;
           <button type="button" data-carousel-next aria-label="下一个项目">→</button>
         </div>
         <p><span data-carousel-current>01</span><i></i><span>{String(entries.length).padStart(2, '0')}</span></p>
-        <small>点击后方卡片，或使用方向键切换</small>
       </div>
     )}
   </div>
@@ -153,7 +152,7 @@ const { entries } = Astro.props;
 
   .deck-controls {
     display: grid;
-    grid-template-columns: auto auto 1fr;
+    grid-template-columns: auto 1fr;
     gap: var(--space-4);
     align-items: center;
     margin-top: var(--space-3);
@@ -203,11 +202,6 @@ const { entries } = Astro.props;
     background: var(--color-border-strong);
   }
 
-  .deck-controls small {
-    color: var(--color-text-faint);
-    font-size: 0.68rem;
-  }
-
   @media (max-width: 760px) {
     .deck-stage {
       padding-right: 2.4rem;
@@ -222,12 +216,5 @@ const { entries } = Astro.props;
       transform: translate(2.2rem, 1.45rem) rotate(1.7deg) scale(0.97);
     }
 
-    .deck-controls {
-      grid-template-columns: auto 1fr;
-    }
-
-    .deck-controls small {
-      display: none;
-    }
   }
 </style>

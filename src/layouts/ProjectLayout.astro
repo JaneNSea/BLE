@@ -93,7 +93,6 @@ const {
       <header class="evidence-heading">
         <p class="eyebrow">Project evidence</p>
         <h2>来自课程评价与代码实践的旁证</h2>
-        <p>先了解项目由谁完成、如何被评价，以及代码如何拆分，再进入完整的设计与学习记录。</p>
       </header>
       {testimonial && <ProjectReview quote={testimonial.quote} attribution={testimonial.attribution} />}
       <ProjectRepositories repositories={repositories} legacyRepo={legacyRepo} />
@@ -104,7 +103,6 @@ const {
         <p class="eyebrow">Full report</p>
         <div>
           <h2>完整的技术学习与设计记录</h2>
-          <p>正文保留课程设计的原始叙述，并按照报告章节提供目录，方便按主题阅读。</p>
         </div>
       </header>
       <div class="learning-body shell">
@@ -131,15 +129,11 @@ const {
   dd { margin: var(--space-1) 0 0; font-family: var(--font-display); font-size: 0.9rem; font-weight: 650; }
   .learning-intro { display: grid; width: min(calc(100% - 2rem), 64rem); gap: var(--space-5); padding-block: var(--space-7); }
   .learning-intro > *, .hero-grid > *, .learning-body > * { min-width: 0; }
-  .evidence-heading { display: grid; grid-template-columns: minmax(0, 1fr) minmax(18rem, 0.75fr); gap: var(--space-4) var(--space-7); align-items: end; padding-bottom: var(--space-3); }
-  .evidence-heading .eyebrow { grid-column: 1 / -1; margin-bottom: 0; }
+  .evidence-heading { padding-bottom: var(--space-3); }
   .evidence-heading h2, .report-heading h2 { margin: 0; font-family: var(--font-display); font-size: clamp(1.9rem, 4vw, 3rem); font-weight: 650; letter-spacing: -0.04em; line-height: 1.14; }
-  .evidence-heading > p:last-child, .report-heading > div > p { margin: 0; color: var(--color-text-soft); font-size: 0.84rem; }
   .report-section { border-top: 1px solid var(--color-border); background: rgba(255, 251, 243, 0.22); }
   .report-heading { display: grid; grid-template-columns: minmax(10rem, 0.33fr) minmax(0, 1fr); gap: clamp(1.5rem, 5vw, 5rem); padding-top: var(--space-7); }
   .report-heading .eyebrow { margin-top: 0.55rem; }
-  .report-heading > div { display: flex; justify-content: space-between; gap: var(--space-5); align-items: end; }
-  .report-heading > div > p { max-width: 28rem; }
   .learning-body { display: grid; min-width: 0; grid-template-columns: minmax(12rem, 0.34fr) minmax(0, 1fr); gap: clamp(1.5rem, 5vw, 5rem); padding-block: var(--space-6) var(--space-9); }
   .prose { min-width: 0; max-width: 100%; margin: 0; overflow-wrap: anywhere; }
   .prose :global(> h2:first-child) { margin-top: 0; }
@@ -147,10 +141,8 @@ const {
   @media (max-width: 900px) {
     .hero-grid { grid-template-columns: 1fr; }
     .hero-context { max-width: 42rem; padding-top: 0; }
-    .evidence-heading { grid-template-columns: 1fr; }
     .report-heading { grid-template-columns: 1fr; gap: var(--space-2); }
     .report-heading .eyebrow { margin: 0; }
-    .report-heading > div { align-items: start; flex-direction: column; }
     .learning-body { grid-template-columns: 1fr; }
   }
 
