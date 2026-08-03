@@ -1,0 +1,441 @@
+---
+title: "Spark 本地模式与 Standalone 集群部署实验"
+summary: "记录在两台 Linux 虚拟机上部署 Spark 4.1.1、配置 Java 21、验证 spark-shell、Web UI 与 Standalone 集群提交任务时最容易踩到的 SSH、端口和版本兼容问题。"
+publishedAt: 2026-04-26
+publishedLabel: "2026 年 4 月"
+tags: ["Apache Spark", "Spark Standalone", "Java 21", "Linux", "SSH"]
+listingTags: ["数据工程"]
+cover: "/images/notes/spark/20.png"
+coverPosition: "50% 18%"
+authors:
+  - name: "JaneNSea"
+    role: "作者"
+    avatar: "/avatar.jpg"
+featured: false
+priority: 0
+draft: false
+readingMinutes: 14
+relatedProjects: []
+---
+
+import { withBase } from '../../utils/url';
+
+## 实验目标与边界
+
+这次实验的目标不是搭建生产级 Spark 平台，而是在两台虚拟机上完成一条最小可验证链路：先让 SSH 和 Java 环境稳定，再安装 Spark，最后分别验证本地模式和 Standalone 集群模式。
+
+实验主要验证四件事：
+
+- Linux 虚拟机之间可以通过 SSH 建立管理链路。
+- Spark 4.1.1 能在 Java 21 环境下启动。
+- `spark-shell` 和 `spark-submit --master local[2]` 可以完成本地任务。
+- Master 与 Worker 可以组成 Standalone 集群，并通过 `spark://<master_ip>:7077` 接收任务。
+
+## 实验环境
+
+| 项目 | Master 节点 | Worker 节点 |
+|---|---|---|
+| 操作系统 | CentOS 7 | Ubuntu 20.04.6 LTS |
+| JDK 版本 | OpenJDK 21 | OpenJDK 21 |
+| Spark 版本 | 4.1.1 | 4.1.1 |
+| 主机名 | `master` | `worker` |
+| 地址写法 | `<master_ip>` | `<worker_ip>` |
+| 远程工具 | FinalShell / SSH | FinalShell / SSH |
+
+Spark 4.1.1 官方文档说明该版本运行在 Java 17/21、Scala 2.13 和 Python 3.10+ 之上。这个实验选择 Java 21，因此没有沿用早期课件中的 Spark 3.0.0 + JDK 8 组合。
+
+## 先把 SSH 链路跑通
+
+### 查看 Worker 节点地址
+
+Worker 节点先执行：
+
+```bash
+ip addr
+```
+
+在输出中找到实际使用的网卡，例如 `ens33`，记录 `inet` 后的地址。正文统一使用 `<worker_ip>` 表示该地址。
+
+<figure>
+  <img src={withBase('/images/notes/spark/01_ip_addr.png')} alt="Ubuntu 终端执行 ip addr 并显示网卡地址" />
+  <figcaption>Worker 节点通过 `ip addr` 确认网卡地址。</figcaption>
+</figure>
+
+### 安装并启动 OpenSSH
+
+FinalShell 通过 SSH 协议连接 Worker，因此 Ubuntu 节点需要确认 `openssh-server` 已安装并启动：
+
+```bash
+sudo apt update
+sudo apt install openssh-server -y
+sudo systemctl start ssh
+sudo systemctl enable ssh
+sudo systemctl status ssh
+```
+
+`systemctl status ssh` 看到 `Active: active (running)` 才说明服务端已经监听。若 FinalShell 报 `java.net.ConnectException: Connection refused`，通常优先回到这里检查 SSH 服务，而不是先改 Spark。
+
+<figure>
+  <img src={withBase('/images/notes/spark/02.png')} alt="Ubuntu 终端显示 ssh 服务状态为 active running" />
+  <figcaption>SSH 服务启动后，FinalShell 才能通过 22 端口连接 Worker。</figcaption>
+</figure>
+
+### 检查防火墙与远程连接
+
+Ubuntu 默认防火墙可用以下命令检查：
+
+```bash
+sudo ufw status
+```
+
+如果返回 `Status: inactive`，实验网络中不会由 UFW 拦截 22 端口；如果已经启用，则至少开放 SSH 端口：
+
+```bash
+sudo ufw allow 22/tcp
+sudo ufw reload
+```
+
+<figure>
+  <img src={withBase('/images/notes/spark/03.png')} alt="Ubuntu 终端显示 ufw 防火墙状态" />
+  <figcaption>先确认防火墙状态，再排查连接拒绝问题。</figcaption>
+</figure>
+
+FinalShell 连接时只需要填写 `<worker_ip>`、公开的实验用户名和 22 端口。账号口令不写入公开文档。
+
+<figure>
+  <img src={withBase('/images/notes/spark/04.png')} alt="FinalShell 显示已经连接到 Ubuntu 节点" />
+  <figcaption>远程会话连通后，再继续做 Java 与 Spark 配置。</figcaption>
+</figure>
+
+## 部署 Java 21
+
+Worker 节点安装 OpenJDK 21：
+
+```bash
+sudo apt install openjdk-21-jdk -y
+```
+
+Master 节点如果没有 Java 21，可使用发行版对应包管理器安装。例如 CentOS 环境：
+
+```bash
+sudo yum install java-21-openjdk -y
+```
+
+两台机器都执行：
+
+```bash
+java -version
+```
+
+<figure>
+  <img src={withBase('/images/notes/spark/05.png')} alt="Master 节点终端显示 OpenJDK 21 版本" />
+  <figcaption>Master 节点确认 `java -version` 能返回 OpenJDK 21。</figcaption>
+</figure>
+
+<figure>
+  <img src={withBase('/images/notes/spark/06.png')} alt="Worker 节点终端显示 OpenJDK 21 版本" />
+  <figcaption>Worker 节点同样需要确认 Java 版本和运行时可用。</figcaption>
+</figure>
+
+环境变量按系统差异分别写入。
+
+Ubuntu 常见写法：
+
+```bash
+cat >> ~/.bashrc <<'EOF'
+export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+export PATH=$JAVA_HOME/bin:$PATH
+EOF
+source ~/.bashrc
+echo "$JAVA_HOME"
+```
+
+CentOS 常见写法：
+
+```bash
+cat >> ~/.bash_profile <<'EOF'
+export JAVA_HOME=/usr/lib/jvm/java-21-openjdk
+export PATH=$JAVA_HOME/bin:$PATH
+EOF
+source ~/.bash_profile
+echo "$JAVA_HOME"
+```
+
+<figure>
+  <img src={withBase('/images/notes/spark/07.png')} alt="Ubuntu 终端通过 echo JAVA_HOME 验证环境变量" />
+  <figcaption>Ubuntu 使用 `.bashrc` 后，通过 `echo "$JAVA_HOME"` 检查是否生效。</figcaption>
+</figure>
+
+<figure>
+  <img src={withBase('/images/notes/spark/08.png')} alt="CentOS 终端通过 echo JAVA_HOME 验证环境变量" />
+  <figcaption>CentOS 使用 `.bash_profile` 后，同样要重新加载配置。</figcaption>
+</figure>
+
+## 安装 Spark 4.1.1
+
+两台机器都需要放置相同版本的 Spark。以 Spark 4.1.1 Hadoop 3 预编译包为例：
+
+```bash
+cd ~
+wget https://archive.apache.org/dist/spark/spark-4.1.1/spark-4.1.1-bin-hadoop3.tgz
+tar -zxvf spark-4.1.1-bin-hadoop3.tgz
+mv spark-4.1.1-bin-hadoop3 spark
+```
+
+如果课程环境使用国内镜像，可以把下载地址替换为可信镜像源；但版本号和包名应保持一致。
+
+<figure>
+  <img src={withBase('/images/notes/spark/09.png')} alt="终端显示 Spark 4.1.1 安装包下载过程" />
+  <figcaption>下载完成后先确认压缩包存在，再解压和重命名。</figcaption>
+</figure>
+
+配置 Spark 环境变量：
+
+```bash
+cat >> ~/.bashrc <<'EOF'
+export SPARK_HOME=~/spark
+export PATH=$SPARK_HOME/bin:$SPARK_HOME/sbin:$PATH
+EOF
+source ~/.bashrc
+```
+
+CentOS 可写入 `~/.bash_profile`：
+
+```bash
+cat >> ~/.bash_profile <<'EOF'
+export SPARK_HOME=~/spark
+export PATH=$SPARK_HOME/bin:$SPARK_HOME/sbin:$PATH
+EOF
+source ~/.bash_profile
+```
+
+验证安装：
+
+```bash
+spark-shell --version
+```
+
+<figure>
+  <img src={withBase('/images/notes/spark/10.png')} alt="Ubuntu 终端显示 spark-shell version 输出" />
+  <figcaption>Worker 节点确认 `spark-shell --version` 能识别 Spark 4.1.1。</figcaption>
+</figure>
+
+<figure>
+  <img src={withBase('/images/notes/spark/11.png')} alt="CentOS 终端显示 spark-shell version 输出" />
+  <figcaption>Master 节点也要确认相同版本，避免集群启动后出现兼容问题。</figcaption>
+</figure>
+
+## 验证 Spark 本地模式
+
+先在单机启动 Spark Shell：
+
+```bash
+~/spark/bin/spark-shell
+```
+
+看到提示符变成 `scala>` 后，准备一个小文本文件：
+
+```bash
+cat > ~/word.txt <<'EOF'
+spark spark hadoop cloud
+cloud spark
+EOF
+```
+
+在 `scala>` 中执行 WordCount：
+
+```scala
+sc.textFile("word.txt")
+  .flatMap(_.split(" "))
+  .map((_, 1))
+  .reduceByKey(_ + _)
+  .collect
+```
+
+<figure>
+  <img src={withBase('/images/notes/spark/12.png')} alt="Spark Shell 执行 WordCount 并返回词频数组" />
+  <figcaption>交互式 WordCount 可以验证 Spark Shell、RDD 转换和行动算子链路。</figcaption>
+</figure>
+
+运行 `spark-shell` 时，Spark 默认提供应用 Web UI。访问：
+
+```text
+http://<master_ip>:4040/
+```
+
+如果访问失败，先确认运行 shell 的节点地址，再检查 4040 端口是否被防火墙拦截。CentOS 使用 `firewalld` 时，可在实验环境开放端口：
+
+```bash
+sudo firewall-cmd --permanent --add-port=4040/tcp
+sudo firewall-cmd --reload
+sudo firewall-cmd --list-ports
+```
+
+<figure>
+  <img src={withBase('/images/notes/spark/13.png')} alt="浏览器显示 Spark Jobs 页面和 WordCount 作业记录" />
+  <figcaption>4040 Web UI 用来观察单个 Spark 应用的 Jobs、Stages 和 Executors。</figcaption>
+</figure>
+
+再使用 `spark-submit` 提交 SparkPi 示例：
+
+```bash
+cd ~/spark
+bin/spark-submit --class org.apache.spark.examples.SparkPi \
+  --master local[2] \
+  ./examples/jars/spark-examples_*.jar 10
+```
+
+其中 `local[2]` 表示本地使用 2 个线程，末尾的 `10` 是示例任务参数。
+
+<figure>
+  <img src={withBase('/images/notes/spark/14.png')} alt="终端显示 spark-submit 本地模式执行 SparkPi 结果" />
+  <figcaption>本地模式提交成功后，会在终端打印 SparkPi 计算结果。</figcaption>
+</figure>
+
+## 搭建 Standalone 集群
+
+Spark Standalone 可以手动启动 Master 和 Worker，也可以使用 `sbin/start-all.sh` 这类脚本。官方文档说明，集群启动脚本会读取 `conf/workers`，并通过 SSH 访问 Worker；如果没有免密 SSH，使用脚本批量启动时更容易卡在登录环节。
+
+### 配置 Worker 列表
+
+在 Master 节点写入 Worker 地址：
+
+```bash
+echo "<worker_ip>" > ~/spark/conf/workers
+cat ~/spark/conf/workers
+```
+
+Spark 4.x 使用 `conf/workers`；旧资料中的 `slaves` 命名主要见于更早版本。
+
+<figure>
+  <img src={withBase('/images/notes/spark/15.png')} alt="Master 节点终端显示 conf workers 文件中的 Worker 地址" />
+  <figcaption>`conf/workers` 每行写一个 Worker 主机名或地址。</figcaption>
+</figure>
+
+### 配置 spark-env.sh
+
+两台机器都从模板复制配置文件：
+
+```bash
+cd ~/spark/conf
+cp spark-env.sh.template spark-env.sh
+```
+
+然后根据当前机器的 Java 路径写入 `JAVA_HOME`，并在 Master 相关配置中使用脱敏地址：
+
+```bash
+cat >> spark-env.sh <<'EOF'
+export JAVA_HOME=<java_home>
+SPARK_MASTER_HOST=<master_ip>
+SPARK_MASTER_PORT=7077
+EOF
+```
+
+在这个实验里，Ubuntu 与 CentOS 的 `JAVA_HOME` 路径不同；照抄另一台机器的路径会导致 Worker 启动失败。
+
+<figure>
+  <img src={withBase('/images/notes/spark/16.png')} alt="Ubuntu 文本编辑器显示 spark-env.sh 末尾配置" />
+  <figcaption>Worker 节点的 `spark-env.sh` 需要匹配本机 Java 路径。</figcaption>
+</figure>
+
+<figure>
+  <img src={withBase('/images/notes/spark/17.png')} alt="CentOS 文本编辑器显示 spark-env.sh 末尾配置" />
+  <figcaption>Master 节点通过 `SPARK_MASTER_HOST` 和 `SPARK_MASTER_PORT` 固定 Master 地址。</figcaption>
+</figure>
+
+### 分别启动 Master 与 Worker
+
+如果 `start-all.sh` 因 SSH 免密、路径或环境变量不一致而失败，可以分开执行，定位会更清楚。
+
+Master 节点：
+
+```bash
+~/spark/sbin/start-master.sh
+```
+
+Worker 节点：
+
+```bash
+~/spark/sbin/start-worker.sh spark://<master_ip>:7077
+```
+
+然后分别检查进程：
+
+```bash
+jps
+```
+
+Master 应看到 `Master`，Worker 应看到 `Worker`。
+
+<figure>
+  <img src={withBase('/images/notes/spark/18.png')} alt="Master 节点 jps 输出显示 Master 进程" />
+  <figcaption>Master 进程出现后，才能接受 Worker 注册。</figcaption>
+</figure>
+
+<figure>
+  <img src={withBase('/images/notes/spark/19.png')} alt="Worker 节点 jps 输出显示 Worker 进程" />
+  <figcaption>Worker 进程出现后，再去 Master Web UI 确认 Alive Workers。</figcaption>
+</figure>
+
+### 查看 Standalone Web UI
+
+Master Web UI 默认端口为 8080：
+
+```text
+http://<master_ip>:8080/
+```
+
+防火墙不仅要考虑 8080，还要考虑 Master 服务端口 7077。Worker 默认还有自己的 Web UI 端口；如果实验中遇到端口变化或通信异常，建议先在封闭虚拟机网络中缩小变量，再回到按需开放端口的方式。生产或公网环境不应直接关闭防火墙。
+
+<figure>
+  <img src={withBase('/images/notes/spark/20.png')} alt="浏览器显示 Spark Standalone Master 页面和 Alive Workers" />
+  <figcaption>Master 页面显示 Alive Workers 后，说明 Worker 已完成注册。</figcaption>
+</figure>
+
+## 向集群提交任务
+
+在 Master 节点提交 SparkPi：
+
+```bash
+cd ~/spark
+bin/spark-submit \
+  --class org.apache.spark.examples.SparkPi \
+  --master spark://<master_ip>:7077 \
+  ./examples/jars/spark-examples_*.jar 10
+```
+
+如果任务能打印 `Pi is roughly ...`，说明任务已经通过 Standalone Master 调度执行。与本地模式相比，这一步验证的是 Driver 通过 Master 发现 Worker、分配 Executor 并返回结果的完整链路。
+
+<figure>
+  <img src={withBase('/images/notes/spark/21.png')} alt="终端显示集群模式提交 SparkPi 并输出 Pi 估算结果" />
+  <figcaption>集群模式下的 SparkPi 输出证明 Standalone 提交链路可用。</figcaption>
+</figure>
+
+<figure>
+  <img src={withBase('/images/notes/spark/22.png')} alt="Spark Master Web UI 显示已完成和失败的应用记录" />
+  <figcaption>Web UI 可以回看应用状态；实验中失败记录通常能帮助定位防火墙或 Worker 通信问题。</figcaption>
+</figure>
+
+## 结果与排错经验
+
+这次实验最终确认：
+
+- FinalShell 可以通过 SSH 连接 Worker，连接拒绝问题由 SSH 服务未启动引起。
+- 两台虚拟机都能使用 OpenJDK 21，并通过 `JAVA_HOME` 和 `PATH` 让 Spark 找到 Java。
+- 单机 `spark-shell` 能完成 WordCount，`spark-submit --master local[2]` 能运行 SparkPi。
+- Standalone Master 与 Worker 能启动并注册，Web UI 能显示 Worker 和应用状态。
+- 集群模式 `spark-submit --master spark://<master_ip>:7077` 可以完成任务提交和执行。
+
+几个容易踩坑的点：
+
+- **版本要先对齐**：Spark 4.1.1 与 Java 21 是一组可用组合；如果使用旧版 Spark，应重新查官方兼容性，不要直接套用新 JDK。
+- **Linux 发行版差异会影响命令**：Ubuntu 用 `apt`、`ufw`、`.bashrc` 更常见；CentOS 用 `yum`、`firewalld`、`.bash_profile` 更常见。
+- **`start-all.sh` 依赖 SSH 条件**：没有免密登录时，分开执行 `start-master.sh` 和 `start-worker.sh` 更适合教学实验排错。
+- **端口问题不要只看 Web UI**：4040、7077、8080 只是最明显的端口；实际任务通信还可能受到 Worker、Executor 或防火墙策略影响。
+- **关闭防火墙只能作为封闭实验排查手段**：真实环境应显式配置端口、认证、网络边界和访问控制。
+
+## 参考资料
+
+- [Apache Spark 4.1.1 Documentation：Overview](https://spark.apache.org/docs/4.1.1/index.html)
+- [Apache Spark 4.1.1 Documentation：Standalone Mode](https://spark.apache.org/docs/4.1.1/spark-standalone.html)
+- [Apache Spark 4.1.1 Documentation：Submitting Applications](https://spark.apache.org/docs/4.1.1/submitting-applications.html)

@@ -31,9 +31,9 @@ import Tex from '../../components/content/Tex.astro';
 
 现实世界中大量关键系统都可以抽象为图结构：社交网络中的用户与关系、推荐系统中的用户与物品、知识图谱中的实体与多元关系、分子中的原子与化学键、交通网络中的路口与道路等。一个典型的无向图可表示为
 
-<Tex block tex="G = (V, E, \mathbf{X})," />
+<Tex block tex={String.raw`G = (V, E, \mathbf{X}),`} />
 
-其中 <Tex tex="V" /> 为节点集合，<Tex tex="E" /> 为边集合，<Tex tex="\mathbf{X} \in \mathbb{R}^{|V| \times d}" /> 为节点特征矩阵，第 <Tex tex="v" /> 行对应节点 <Tex tex="v" /> 的特征向量 <Tex tex="\mathbf{x}_v" />。若为有向图或多关系图，还需考虑边的方向与类型。
+其中 <Tex tex="V" /> 为节点集合，<Tex tex="E" /> 为边集合，<Tex tex={String.raw`\mathbf{X} \in \mathbb{R}^{|V| \times d}`} /> 为节点特征矩阵，第 <Tex tex="v" /> 行对应节点 <Tex tex="v" /> 的特征向量 <Tex tex={String.raw`\mathbf{x}_v`} />。若为有向图或多关系图，还需考虑边的方向与类型。
 
 基于图数据的学习任务大致可分为：
 - **节点级任务**：猜测每个节点的标签或属性，如社交网络中的用户兴趣分类、引文网络中的论文类别预测等；
@@ -46,15 +46,15 @@ import Tex from '../../components/content/Tex.astro';
 
 现代 GNN 的主流形式可被统一到消息传递神经网络（Message Passing Neural Network, MPNN）框架〔2, 1〕。其核心思想是在多层网络中迭代执行“消息传递 + 聚合 + 更新”三个步骤，使每个节点在多次迭代后得到包含高阶邻域信息的表示。典型的一层更新可写为
 
-<Tex block tex="\mathbf{h}_v^{(k)} = \text{UPDATE}^{(k)}\big(\mathbf{h}_v^{(k-1)}, \mathbf{m}_v^{(k)}\big), \quad \mathbf{m}_v^{(k)} = \text{AGGREGATE}^{(k)}\big(\{\mathbf{h}_u^{(k-1)} : u \in \mathcal{N}(v)\}\big)," />
+<Tex block tex={String.raw`\mathbf{h}_v^{(k)} = \text{UPDATE}^{(k)}\big(\mathbf{h}_v^{(k-1)}, \mathbf{m}_v^{(k)}\big), \quad \mathbf{m}_v^{(k)} = \text{AGGREGATE}^{(k)}\big(\{\mathbf{h}_u^{(k-1)} : u \in \mathcal{N}(v)\}\big),`} />
 
-其中 <Tex tex="\mathbf{h}_v^{(k)}" /> 表示第 <Tex tex="k" /> 层后节点 <Tex tex="v" /> 的表示向量，<Tex tex="\mathcal{N}(v)" /> 为邻居集合，AGGREGATE 需满足置换不变性（如求和、平均、最大池化等），UPDATE 通常为带参数的非线性变换（如多层感知机）。
+其中 <Tex tex={String.raw`\mathbf{h}_v^{(k)}`} /> 表示第 <Tex tex="k" /> 层后节点 <Tex tex="v" /> 的表示向量，<Tex tex={String.raw`\mathcal{N}(v)`} /> 为邻居集合，AGGREGATE 需满足置换不变性（如求和、平均、最大池化等），UPDATE 通常为带参数的非线性变换（如多层感知机）。
 
 以最常用的 Graph Convolutional Network (GCN) 为例，其层间传播可写为
 
-<Tex block tex="\mathbf{H}^{(k)} = \sigma\big(\tilde{\mathbf{D}}^{-\frac{1}{2}}\tilde{\mathbf{A}}\tilde{\mathbf{D}}^{-\frac{1}{2}}\mathbf{H}^{(k-1)}\mathbf{W}^{(k)}\big)," />
+<Tex block tex={String.raw`\mathbf{H}^{(k)} = \sigma\big(\tilde{\mathbf{D}}^{-\frac{1}{2}}\tilde{\mathbf{A}}\tilde{\mathbf{D}}^{-\frac{1}{2}}\mathbf{H}^{(k-1)}\mathbf{W}^{(k)}\big),`} />
 
-其中 <Tex tex="\tilde{\mathbf{A}} = \mathbf{A} + \mathbf{I}" /> 为加入自环后的邻接矩阵，<Tex tex="\tilde{\mathbf{D}}" /> 为其度矩阵，<Tex tex="\mathbf{H}^{(k)}" /> 为所有节点在第 <Tex tex="k" /> 层的表示，<Tex tex="\mathbf{W}^{(k)}" /> 为可学习权重，<Tex tex="\sigma" /> 为激活函数。该形式可以视为在图拉普拉斯谱域中对卷积核的一阶近似。
+其中 <Tex tex={String.raw`\tilde{\mathbf{A}} = \mathbf{A} + \mathbf{I}`} /> 为加入自环后的邻接矩阵，<Tex tex={String.raw`\tilde{\mathbf{D}}`} /> 为其度矩阵，<Tex tex={String.raw`\mathbf{H}^{(k)}`} /> 为所有节点在第 <Tex tex="k" /> 层的表示，<Tex tex={String.raw`\mathbf{W}^{(k)}`} /> 为可学习权重，<Tex tex={String.raw`\sigma`} /> 为激活函数。该形式可以视为在图拉普拉斯谱域中对卷积核的一阶近似。
 
 ### 典型 GNN 模型家族
 
