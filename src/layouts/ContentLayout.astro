@@ -8,6 +8,13 @@ interface Heading {
   text: string;
 }
 
+interface Author {
+  name: string;
+  role?: string;
+  avatar?: string;
+  url?: string;
+}
+
 interface Props {
   eyebrow: string;
   title: string;
@@ -16,6 +23,7 @@ interface Props {
   publishedLabel?: string;
   updatedAt?: Date;
   tags?: string[];
+  authors?: Author[];
   headings?: Heading[];
   cover?: string;
   coverAlt?: string;
@@ -33,6 +41,7 @@ const {
   publishedLabel,
   updatedAt,
   tags = [],
+  authors = [],
   headings = [],
   cover,
   coverAlt = `${title} 技术笔记视觉`,
@@ -48,6 +57,7 @@ const formatter = new Intl.DateTimeFormat('zh-CN', {
 });
 const displayDate = publishedLabel ?? formatter.format(publishedAt);
 const chapters = headings.filter((heading) => heading.depth >= 2 && heading.depth <= 3).slice(0, 8);
+const initialsFor = (name: string) => name.trim().slice(0, 2).toUpperCase();
 ---
 
 <BaseLayout title={`${title} — ${eyebrow}`} description={summary} math>
@@ -58,6 +68,27 @@ const chapters = headings.filter((heading) => heading.depth >= 2 && heading.dept
         <div class="hero-copy">
           <p class="eyebrow">{eyebrow}</p>
           <h1 class="page-title">{title}</h1>
+          {authors.length > 0 && (
+            <ul class="author-list" aria-label="作者">
+              {authors.map((author) => (
+                <li>
+                  {author.avatar ? (
+                    <img src={withBase(author.avatar)} alt="" width="36" height="36" loading="eager" />
+                  ) : (
+                    <span class="author-initials" aria-hidden="true">{initialsFor(author.name)}</span>
+                  )}
+                  <span class="author-copy">
+                    {author.url ? (
+                      <a href={author.url} target="_blank" rel="noreferrer">{author.name}</a>
+                    ) : (
+                      <strong>{author.name}</strong>
+                    )}
+                    {author.role && <small>{author.role}</small>}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
           <p class="lede">{summary}</p>
           <div class="meta-row">
             <span>发布于 {displayDate}</span>
@@ -119,7 +150,7 @@ const chapters = headings.filter((heading) => heading.depth >= 2 && heading.dept
 
 <style>
   .content-hero {
-    padding-block: var(--space-8) var(--space-7);
+    padding-block: var(--space-7) var(--space-6);
     border-bottom: 1px solid var(--color-border);
   }
 
@@ -137,12 +168,12 @@ const chapters = headings.filter((heading) => heading.depth >= 2 && heading.dept
 
   .hero-grid {
     display: grid;
-    gap: clamp(2rem, 6vw, 5rem);
+    gap: clamp(2rem, 5vw, 4rem);
     align-items: center;
   }
 
   .hero-grid.has-visual {
-    grid-template-columns: minmax(0, 1fr) minmax(15rem, 0.36fr);
+    grid-template-columns: minmax(0, 1fr) minmax(11.5rem, 0.28fr);
   }
 
   .hero-copy {
@@ -157,18 +188,79 @@ const chapters = headings.filter((heading) => heading.depth >= 2 && heading.dept
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-4);
-    margin: var(--space-5) 0 var(--space-4);
+    margin: var(--space-4) 0 0;
     color: var(--color-text-faint);
     font-family: var(--font-mono);
     font-size: 0.75rem;
   }
 
+  .author-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin: var(--space-4) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .author-list li {
+    display: inline-flex;
+    min-width: 0;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .author-list img,
+  .author-initials {
+    flex: 0 0 auto;
+    width: 2.25rem;
+    height: 2.25rem;
+    border: 1px solid var(--color-border-strong);
+    border-radius: 50%;
+    background: rgba(255, 251, 243, 0.72);
+  }
+
+  .author-list img {
+    object-fit: cover;
+  }
+
+  .author-initials {
+    display: grid;
+    place-items: center;
+    color: var(--color-accent-strong);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 800;
+  }
+
+  .author-copy {
+    display: grid;
+    min-width: 0;
+    line-height: 1.25;
+  }
+
+  .author-copy strong,
+  .author-copy a {
+    color: var(--color-text);
+    font-size: 0.84rem;
+    font-weight: 720;
+  }
+
+  .author-copy a:hover {
+    color: var(--color-accent-strong);
+  }
+
+  .author-copy small {
+    color: var(--color-text-faint);
+    font-size: 0.68rem;
+  }
+
   .note-visual {
     position: relative;
     justify-self: end;
-    width: min(100%, 18.5rem);
+    width: min(100%, 13.5rem);
     margin: 0;
-    transform: rotate(2.2deg);
+    transform: rotate(1.8deg);
   }
 
   .note-visual::before,
@@ -199,10 +291,11 @@ const chapters = headings.filter((heading) => heading.depth >= 2 && heading.dept
 
   .note-visual img {
     width: 100%;
-    aspect-ratio: 1 / 1;
+    aspect-ratio: 1 / 1.04;
     object-fit: cover;
+    object-position: center;
     border: 1px solid rgba(91, 70, 41, 0.18);
-    box-shadow: 0 22px 48px rgba(83, 57, 23, 0.13);
+    box-shadow: 0 16px 36px rgba(83, 57, 23, 0.12);
     clip-path: polygon(3% 0, 100% 4%, 96% 92%, 86% 100%, 0 96%, 2% 16%);
   }
 
@@ -311,7 +404,7 @@ const chapters = headings.filter((heading) => heading.depth >= 2 && heading.dept
 
     .note-visual {
       justify-self: start;
-      width: min(78vw, 18rem);
+      width: min(72vw, 14rem);
     }
 
     .note-aside {
@@ -327,16 +420,12 @@ const chapters = headings.filter((heading) => heading.depth >= 2 && heading.dept
   }
 
   @media (max-width: 560px) {
-    .content-hero {
-      padding-block: var(--space-7) var(--space-6);
-    }
-
     .note-aside {
       grid-template-columns: 1fr;
     }
 
     .note-visual {
-      width: min(88vw, 17rem);
+      width: min(72vw, 13rem);
     }
   }
 </style>

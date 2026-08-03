@@ -4,6 +4,12 @@ import { z } from 'astro/zod';
 
 const audience = z.enum(['interviewer', 'investor', 'judge', 'developer']);
 const projectStatus = z.enum(['concept', 'building', 'mvp', 'beta', 'completed', 'maintained']);
+const author = z.object({
+  name: z.string(),
+  role: z.string().optional(),
+  avatar: z.string().optional(),
+  url: z.url().optional(),
+});
 
 const commonShowcaseFields = {
   title: z.string(),
@@ -24,6 +30,7 @@ const notes = defineCollection({
     publishedLabel: z.string().optional(),
     listingTags: z.array(z.string()).default([]),
     coverPosition: z.string().optional(),
+    authors: z.array(author).default([]),
     readingMinutes: z.number().int().positive().optional(),
     relatedProjects: z.array(z.string()).default([]),
   }),
@@ -42,14 +49,7 @@ const projects = defineCollection({
     period: z.string().optional(),
     course: z.string().optional(),
     authors: z
-      .array(
-        z.object({
-          name: z.string(),
-          role: z.string().optional(),
-          avatar: z.string().optional(),
-          url: z.url().optional(),
-        }),
-      )
+      .array(author)
       .default([]),
     repositories: z
       .array(
