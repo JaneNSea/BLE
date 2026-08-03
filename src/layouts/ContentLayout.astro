@@ -103,8 +103,8 @@ const initialsFor = (name: string) => name.trim().slice(0, 2).toUpperCase();
               src={withBase(cover)}
               alt={coverAlt}
               style={`object-position: ${coverPosition};`}
-              width="640"
-              height="640"
+              width="1600"
+              height="900"
               loading="eager"
               decoding="async"
             />
@@ -150,6 +150,7 @@ const initialsFor = (name: string) => name.trim().slice(0, 2).toUpperCase();
 
 <style>
   .content-hero {
+    width: min(calc(100% - 2rem), 82rem);
     padding-block: var(--space-7) var(--space-6);
     border-bottom: 1px solid var(--color-border);
   }
@@ -168,12 +169,12 @@ const initialsFor = (name: string) => name.trim().slice(0, 2).toUpperCase();
 
   .hero-grid {
     display: grid;
-    gap: clamp(2rem, 5vw, 4rem);
+    gap: clamp(2.25rem, 4.5vw, 4.5rem);
     align-items: center;
   }
 
   .hero-grid.has-visual {
-    grid-template-columns: minmax(0, 1fr) minmax(18rem, 0.36fr);
+    grid-template-columns: minmax(0, 1fr) minmax(24rem, 0.56fr);
   }
 
   .hero-copy {
@@ -258,8 +259,8 @@ const initialsFor = (name: string) => name.trim().slice(0, 2).toUpperCase();
   .note-visual {
     position: relative;
     justify-self: end;
-    width: min(100%, 22rem);
-    aspect-ratio: 16 / 10;
+    width: min(100%, 32rem);
+    aspect-ratio: 16 / 9;
     margin: 0;
     transform: rotate(1.2deg);
   }
@@ -273,10 +274,10 @@ const initialsFor = (name: string) => name.trim().slice(0, 2).toUpperCase();
 
   .note-visual::before {
     z-index: -1;
-    inset: 14% -4% -12% 10%;
+    inset: 16% -3% -13% 9%;
     border: 1px solid rgba(91, 70, 41, 0.18);
     background: rgba(198, 160, 91, 0.16);
-    clip-path: polygon(4% 0, 100% 7%, 96% 84%, 86% 100%, 0 92%, 2% 19%);
+    clip-path: polygon(3% 0, 100% 8%, 97% 82%, 90% 100%, 0 93%, 2% 17%);
     transform: rotate(-6deg);
   }
 
@@ -297,7 +298,7 @@ const initialsFor = (name: string) => name.trim().slice(0, 2).toUpperCase();
     object-position: center;
     border: 1px solid rgba(91, 70, 41, 0.18);
     box-shadow: 0 16px 36px rgba(83, 57, 23, 0.12);
-    clip-path: polygon(2% 0, 100% 5%, 97% 88%, 88% 100%, 0 94%, 1% 14%);
+    clip-path: polygon(2% 0, 100% 5%, 98% 86%, 90% 100%, 0 94%, 1% 13%);
   }
 
   .content-body {
@@ -405,7 +406,7 @@ const initialsFor = (name: string) => name.trim().slice(0, 2).toUpperCase();
 
     .note-visual {
       justify-self: start;
-      width: min(84vw, 22rem);
+      width: min(92vw, 32rem);
     }
 
     .note-aside {
@@ -426,7 +427,7 @@ const initialsFor = (name: string) => name.trim().slice(0, 2).toUpperCase();
     }
 
     .note-visual {
-      width: min(88vw, 20rem);
+      width: min(90vw, 30rem);
     }
   }
 </style>
