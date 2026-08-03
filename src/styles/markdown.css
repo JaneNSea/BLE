@@ -133,3 +133,38 @@
   line-height: 1.55;
   text-align: center;
 }
+
+.prose .math-inline {
+  color: var(--color-text);
+}
+
+.prose .math-block,
+.prose mjx-container[display="true"] {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.prose .math-block {
+  margin: 1.8rem 0;
+  padding: 1rem 1.2rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  background: rgba(255, 251, 243, 0.62);
+  text-align: center;
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+
+.prose mjx-container {
+  color: var(--color-text);
+}
+
+.prose mjx-container[display="true"] {
+  margin: 0.1rem 0;
+  padding-block: 0.1rem;
+}
+
+.prose mjx-container[jax="CHTML"][display="true"] {
+  min-width: max-content;
+}

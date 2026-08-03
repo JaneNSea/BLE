@@ -1,0 +1,19 @@
+---
+interface Props {
+  tex: string;
+  block?: boolean;
+  label?: string;
+}
+
+const { tex, block = false, label = block ? '数学公式' : undefined } = Astro.props;
+const start = block ? '\\[' : '\\(';
+const end = block ? '\\]' : '\\)';
+const className = block ? 'math-block' : 'math-inline';
+const expression = `${start}${tex}${end}`;
+---
+
+{block ? (
+  <div class={className} aria-label={label}>{expression}</div>
+) : (
+  <span class={className} aria-label={label}>{expression}</span>
+)}

@@ -13,6 +13,8 @@
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
+    "refresh:repo": "node scripts/fetch-repo-stats.mjs",
+    "prebuild": "npm run refresh:repo",
     "build": "astro build",
     "preview": "astro preview",
     "check": "astro check",

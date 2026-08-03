@@ -9,12 +9,14 @@ interface Props {
   title?: string;
   description?: string;
   noIndex?: boolean;
+  math?: boolean;
 }
 
 const {
   title = `${site.name} — ${site.role}`,
   description = site.description,
   noIndex = false,
+  math = false,
 } = Astro.props;
 const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site) : Astro.url;
 ---
@@ -34,6 +36,30 @@ const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site) : Astro.u
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
     <meta name="twitter:card" content="summary_large_image" />
+    {math && (
+      <>
+        <script is:inline>
+          window.MathJax = {
+            tex: {
+              inlineMath: [['$', '$'], ['\\(', '\\)']],
+              displayMath: [['$$', '$$'], ['\\[', '\\]']],
+              processEscapes: true,
+            },
+            options: {
+              skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+            },
+            chtml: {
+              matchFontHeight: false,
+            },
+          };
+        </script>
+        <script
+          async
+          id="MathJax-script"
+          src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"
+        ></script>
+      </>
+    )}
     <title>{title}</title>
   </head>
   <body>

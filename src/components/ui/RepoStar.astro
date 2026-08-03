@@ -1,5 +1,6 @@
 ---
 import { site } from '../../data/site';
+import { withBase } from '../../utils/url';
 
 interface Props {
   compact?: boolean;
@@ -14,7 +15,8 @@ const { compact = false } = Astro.props;
   target="_blank"
   rel="noreferrer"
   data-repo-star
-  data-api-url={site.repository.api}
+  data-stats-url={withBase('data/repository.json')}
+  data-cache-key={`repo-star-count:${site.repository.slug}`}
   aria-label={`访问 GitHub 上的 ${site.repository.slug} 仓库`}
 >
   <span class="star-mark" aria-hidden="true">★</span>
@@ -30,45 +32,61 @@ const { compact = false } = Astro.props;
 </a>
 
 <script>
-  const cacheKey = 'janensea-ble-star-count';
-  const cacheDuration = 10 * 60 * 1000;
+  type RepositoryStats = {
+    stargazersCount?: number | null;
+    stargazers_count?: number | null;
+    savedAt?: number;
+    updatedAt?: string | null;
+  };
 
   const formatCount = (count: number) =>
     new Intl.NumberFormat('zh-CN', { notation: count >= 1000 ? 'compact' : 'standard' }).format(count);
 
+  const readCount = (stats: RepositoryStats | null) => {
+    const count = Number(stats?.stargazersCount ?? stats?.stargazers_count);
+    return Number.isFinite(count) ? count : null;
+  };
+
+  const readCachedCount = (cacheKey: string) => {
+    try {
+      return readCount(JSON.parse(localStorage.getItem(cacheKey) ?? 'null'));
+    } catch {
+      return null;
+    }
+  };
+
   document.querySelectorAll<HTMLElement>('[data-repo-star]').forEach(async (element) => {
     const output = element.querySelector<HTMLElement>('[data-star-count]');
-    const apiUrl = element.dataset.apiUrl;
-    if (!output || !apiUrl) return;
+    const statsUrl = element.dataset.statsUrl;
+    const cacheKey = element.dataset.cacheKey ?? 'repo-star-count';
+    if (!output || !statsUrl) return;
+
+    const cachedCount = readCachedCount(cacheKey);
+    if (cachedCount !== null) output.textContent = formatCount(cachedCount);
 
     try {
-      const cached = JSON.parse(localStorage.getItem(cacheKey) ?? 'null');
-      if (cached && Date.now() - cached.savedAt < cacheDuration) {
-        output.textContent = formatCount(cached.count);
-        return;
-      }
-    } catch {
-      // Storage may be disabled; the live request below still works.
-    }
-
-    try {
-      const response = await fetch(apiUrl, {
-        headers: { Accept: 'application/vnd.github+json' },
+      const response = await fetch(statsUrl, {
+        cache: 'no-cache',
+        headers: { Accept: 'application/json' },
       });
-      if (!response.ok) throw new Error(`GitHub API responded with ${response.status}`);
+      if (!response.ok) throw new Error(`Repository stats responded with ${response.status}`);
 
-      const repository = await response.json();
-      const count = Number(repository.stargazers_count);
-      if (!Number.isFinite(count)) throw new Error('GitHub API returned an invalid star count');
+      const stats = await response.json() as RepositoryStats;
+      const count = readCount(stats);
+      if (count === null) throw new Error('Repository stats returned an invalid star count');
 
       output.textContent = formatCount(count);
       try {
-        localStorage.setItem(cacheKey, JSON.stringify({ count, savedAt: Date.now() }));
+        localStorage.setItem(cacheKey, JSON.stringify({
+          stargazersCount: count,
+          savedAt: Date.now(),
+          updatedAt: stats.updatedAt ?? null,
+        }));
       } catch {
         // The visible value is already updated, so storage failure is harmless.
       }
     } catch {
-      output.textContent = '—';
+      if (cachedCount === null) output.textContent = '—';
     }
   });
 </script>

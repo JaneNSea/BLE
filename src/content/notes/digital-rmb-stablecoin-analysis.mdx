@@ -12,12 +12,7 @@ readingMinutes: 15
 relatedProjects: []
 ---
 
-> **隐私说明**：原稿中的作者姓名、学号和指导教师信息已脱敏。文中数据、政策表述和参考文献沿用原稿，发布前应进一步核验其真实性、时效性与可追溯来源。
-
-**作者**：已脱敏  
-**学号**：已脱敏  
-**指导教师**：已脱敏  
-**完成日期**：2025 年 6 月 30 日
+import Tex from '../../components/content/Tex.astro';
 
 ## 摘要 Abstract
 
@@ -36,9 +31,7 @@ relatedProjects: []
 
 数字人民币定位于**现金类支付工具（M0）**，采用“中央银行—商业银行”双层运营体系：
 
-<div className="math-block">
-  <em>M</em><sub>0</sub> = <em>C</em> + <em>R</em> + <em>C</em><sub>e</sub>
-</div>
+<Tex block tex="M_0 = C + R + C_e" />
 
 其中，$C_e$ 表示数字人民币余额。
 
@@ -63,9 +56,7 @@ relatedProjects: []
 
 稳定币的储备资产模型可表示为：
 
-<div className="math-block">
-  <em>R</em> = α<em>D</em> + (1 − α)<em>T</em>
-</div>
+<Tex block tex="R = \alpha D + (1 - \alpha)T" />
 
 其中，$\alpha$ 为法币储备比例，$D$ 为银行存款，$T$ 为国债等高流动性资产。
 
@@ -94,9 +85,7 @@ relatedProjects: []
 
 美元稳定币可通过双重循环机制强化美元地位：
 
-<div className="math-block">
-  USD<sub>stable</sub> = β<sub>1</sub>B<sub>bond</sub> + β<sub>2</sub>B<sub>trade</sub>
-</div>
+<Tex block tex="USD_\mathrm{stable} = \beta_1 B_\mathrm{bond} + \beta_2 B_\mathrm{trade}" />
 
 其中，原稿设定 $\beta_1 = 0.62$，表示美债持有相关权重；$\beta_2 = 0.38$，表示贸易结算相关权重。
 
@@ -135,21 +124,15 @@ relatedProjects: []
 
 1. **自贸账户整合**
 
-   <div className="math-block">
-     A<sub>FTZ</sub> = A<sub>RMB</sub> ∪ A<sub>FX</sub>
-   </div>
+   <Tex block tex="A_\mathrm{FTZ} = A_\mathrm{RMB} \cup A_\mathrm{FX}" />
 
 2. **多边桥接协议**
 
-   <div className="math-block">
-     mBridge ⊆ &lbrace;CBDC<sub>1</sub>, …, CBDC<sub>n</sub>&rbrace;
-   </div>
+   <Tex block tex="mBridge \subseteq \{CBDC_1, \ldots, CBDC_n\}" />
 
 3. **流动性池目标**
 
-   <div className="math-block">
-     <em>L</em> = 1.2 万亿元
-   </div>
+   <Tex block tex="L = 1.2\text{ 万亿元}" />
 
 ### 3.2 人民币稳定币的离岸探索
 
@@ -163,11 +146,9 @@ relatedProjects: []
 
 香港试点方案的经济效应在原稿中表示为：
 
-<div className="math-block">
-  ΔGDP = 0.15 · S<sub>stable</sub> + ε
-</div>
+<Tex block tex="\Delta GDP = 0.15 \cdot S_\mathrm{stable} + \varepsilon" />
 
-其中，<span>S<sub>stable</sub></span> 为稳定币交易规模，弹性系数 0.15 沿用原稿设定。
+其中，<Tex tex="S_\mathrm{stable}" /> 为稳定币交易规模，弹性系数 0.15 沿用原稿设定。
 
 ## 4. 结论与政策建议
 

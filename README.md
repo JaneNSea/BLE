@@ -98,7 +98,8 @@ SuperMe 是目前最重要的商业产品案例：一个面向人类与智能 Ag
 | 内容模型 | Astro Content Collections + Zod Schema |
 | 页面生成 | 静态路由、动态内容详情页、GitHub Pages `base` 兼容 |
 | 视觉系统 | 全局 Design Tokens、暖色编辑风格、响应式布局 |
-| 交互 | 原生 JavaScript、堆叠项目轮播、仓库 Star 数、邮箱复制 |
+| 数学公式 | MathJax 按需渲染 Markdown / MDX 中的 TeX 公式 |
+| 交互 | 原生 JavaScript、堆叠项目轮播、仓库 Star 静态快照、邮箱复制 |
 | 留言 | Utterances + GitHub Issues |
 | 部署 | GitHub Actions + GitHub Pages |
 
@@ -218,6 +219,8 @@ readingMinutes: 6
 
 `tags` 用于详细页，可填写具体框架、协议和技术概念；`listingTags` 只用于列表卡片与筛选，建议保留“开发方向 + 编程语言”，例如 `前端 + TypeScript` 或 `嵌入式 + C`。短文章推荐使用 Markdown，并保持“问题 → 原因 → 解法 → 边界”的结构。Codex 跨会话录入技术文档时必须遵循 [`docs/CODEX_TECHNICAL_NOTE_GUIDE.md`](./docs/CODEX_TECHNICAL_NOTE_GUIDE.md)。
 
+正文支持 TeX 公式。短公式使用 `$C_e$`，独立公式使用 `$$...$$`。如果 MDX 文章中的复杂公式包含大量 `{}`，可导入 `src/components/content/Tex.astro` 后使用 `<Tex block tex="..." />`，避免和 MDX 表达式语法冲突。
+
 ### 学习项目
 
 ```bash
@@ -291,7 +294,7 @@ https://<username>.github.io/<repository>/
 
 ## Star 与留言板
 
-首页通过 GitHub 公共仓库 API 获取 Star 数，并在浏览器中缓存十分钟。Star 操作会进入 GitHub 的登录界面；前端不会嵌入 GitHub Token。
+构建前会运行 `npm run refresh:repo`，通过 GitHub REST API 生成 `public/data/repository.json` 的 Star 数静态快照。首页只读取站内 JSON，并用浏览器本地缓存作为失败兜底；访客浏览器不再直连 GitHub API，前端也不会嵌入 GitHub Token。GitHub Pages 工作流每 6 小时会自动重新构建一次以刷新快照。
 
 留言页使用 Utterances 将评论公开保存到 GitHub Issues：
 
