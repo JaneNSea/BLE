@@ -1,7 +1,12 @@
 ---
 import BaseLayout from './BaseLayout.astro';
-import TagList from '../components/ui/TagList.astro';
 import { withBase } from '../utils/url';
+
+interface Heading {
+  depth: number;
+  slug: string;
+  text: string;
+}
 
 interface Props {
   eyebrow: string;
@@ -11,6 +16,10 @@ interface Props {
   publishedLabel?: string;
   updatedAt?: Date;
   tags?: string[];
+  headings?: Heading[];
+  cover?: string;
+  coverAlt?: string;
+  coverPosition?: string;
   backHref: string;
   backLabel: string;
   status?: string;
@@ -24,6 +33,10 @@ const {
   publishedLabel,
   updatedAt,
   tags = [],
+  headings = [],
+  cover,
+  coverAlt = `${title} 技术笔记视觉`,
+  coverPosition = '50% 50%',
   backHref,
   backLabel,
   status,
@@ -33,24 +46,72 @@ const formatter = new Intl.DateTimeFormat('zh-CN', {
   month: '2-digit',
   day: '2-digit',
 });
+const displayDate = publishedLabel ?? formatter.format(publishedAt);
+const chapters = headings.filter((heading) => heading.depth >= 2 && heading.depth <= 3).slice(0, 8);
 ---
 
 <BaseLayout title={`${title} — ${eyebrow}`} description={summary} math>
   <article>
     <header class="content-hero shell">
       <a class="back-link" href={withBase(backHref)}>← {backLabel}</a>
-      <p class="eyebrow">{eyebrow}</p>
-      <h1 class="page-title">{title}</h1>
-      <p class="lede">{summary}</p>
-      <div class="meta-row">
-        <span>发布于 {publishedLabel ?? formatter.format(publishedAt)}</span>
-        {updatedAt && <span>更新于 {formatter.format(updatedAt)}</span>}
-        {status && <span>{status}</span>}
+      <div class:list={['hero-grid', { 'has-visual': cover }]}>
+        <div class="hero-copy">
+          <p class="eyebrow">{eyebrow}</p>
+          <h1 class="page-title">{title}</h1>
+          <p class="lede">{summary}</p>
+          <div class="meta-row">
+            <span>发布于 {displayDate}</span>
+            {updatedAt && <span>更新于 {formatter.format(updatedAt)}</span>}
+            {status && <span>{status}</span>}
+          </div>
+        </div>
+
+        {cover && (
+          <figure class="note-visual">
+            <img
+              src={withBase(cover)}
+              alt={coverAlt}
+              style={`object-position: ${coverPosition};`}
+              width="640"
+              height="640"
+              loading="eager"
+              decoding="async"
+            />
+          </figure>
+        )}
       </div>
-      <TagList tags={tags} />
     </header>
 
     <div class="content-body shell">
+      <aside class="note-aside" aria-label="文章边注">
+        <div class="aside-section">
+          <p>Published</p>
+          <strong>{displayDate}</strong>
+          {status && <span>{status}</span>}
+        </div>
+
+        {tags.length > 0 && (
+          <div class="aside-section">
+            <p>Topics</p>
+            <ul class="aside-tags">
+              {tags.map((tag) => <li>{tag}</li>)}
+            </ul>
+          </div>
+        )}
+
+        {chapters.length > 0 && (
+          <nav class="aside-section toc-section" aria-label="文章目录">
+            <p>Notes</p>
+            <ol class="aside-toc">
+              {chapters.map((heading) => (
+                <li class={`depth-${heading.depth}`}>
+                  <a href={`#${heading.slug}`}>{heading.text}</a>
+                </li>
+              ))}
+            </ol>
+          </nav>
+        )}
+      </aside>
       <div class="prose"><slot /></div>
     </div>
   </article>
@@ -63,8 +124,8 @@ const formatter = new Intl.DateTimeFormat('zh-CN', {
   }
 
   .back-link {
-    display: inline-block;
-    margin-bottom: var(--space-7);
+    display: inline-flex;
+    margin-bottom: var(--space-6);
     color: var(--color-text-soft);
     font-size: 0.9rem;
     transition: color var(--transition);
@@ -72,6 +133,24 @@ const formatter = new Intl.DateTimeFormat('zh-CN', {
 
   .back-link:hover {
     color: var(--color-accent-strong);
+  }
+
+  .hero-grid {
+    display: grid;
+    gap: clamp(2rem, 6vw, 5rem);
+    align-items: center;
+  }
+
+  .hero-grid.has-visual {
+    grid-template-columns: minmax(0, 1fr) minmax(15rem, 0.36fr);
+  }
+
+  .hero-copy {
+    min-width: 0;
+  }
+
+  .hero-copy .lede {
+    max-width: 45rem;
   }
 
   .meta-row {
@@ -84,7 +163,180 @@ const formatter = new Intl.DateTimeFormat('zh-CN', {
     font-size: 0.75rem;
   }
 
+  .note-visual {
+    position: relative;
+    justify-self: end;
+    width: min(100%, 18.5rem);
+    margin: 0;
+    transform: rotate(2.2deg);
+  }
+
+  .note-visual::before,
+  .note-visual::after {
+    position: absolute;
+    content: '';
+    pointer-events: none;
+  }
+
+  .note-visual::before {
+    z-index: -1;
+    inset: 11% -5% -7% 9%;
+    border: 1px solid rgba(91, 70, 41, 0.18);
+    background: rgba(198, 160, 91, 0.16);
+    clip-path: polygon(5% 1%, 100% 6%, 95% 91%, 9% 100%, 0 18%);
+    transform: rotate(-6deg);
+  }
+
+  .note-visual::after {
+    top: -0.65rem;
+    left: 27%;
+    width: 5rem;
+    height: 1.35rem;
+    border: 1px solid rgba(124, 89, 38, 0.12);
+    background: rgba(182, 135, 60, 0.28);
+    transform: rotate(-7deg);
+  }
+
+  .note-visual img {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border: 1px solid rgba(91, 70, 41, 0.18);
+    box-shadow: 0 22px 48px rgba(83, 57, 23, 0.13);
+    clip-path: polygon(3% 0, 100% 4%, 96% 92%, 86% 100%, 0 96%, 2% 16%);
+  }
+
   .content-body {
+    display: grid;
+    grid-template-columns: minmax(9rem, 0.24fr) minmax(0, 1fr);
+    gap: clamp(2rem, 5vw, 4.5rem);
+    align-items: start;
     padding-block: var(--space-8) var(--space-9);
+  }
+
+  .prose {
+    width: min(100%, var(--reading-width));
+    margin: 0;
+  }
+
+  .note-aside {
+    position: sticky;
+    top: 6.5rem;
+    display: grid;
+    gap: var(--space-5);
+    min-width: 0;
+    padding-top: 0.25rem;
+    color: var(--color-text-faint);
+    font-size: 0.73rem;
+  }
+
+  .aside-section {
+    display: grid;
+    gap: var(--space-2);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .aside-section p {
+    margin: 0;
+    color: var(--color-accent-strong);
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    font-weight: 750;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .aside-section strong {
+    color: var(--color-text);
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 650;
+    line-height: 1.25;
+  }
+
+  .aside-section span {
+    line-height: 1.45;
+  }
+
+  .aside-tags,
+  .aside-toc {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .aside-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .aside-tags li {
+    padding: 0.18rem 0.45rem;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    color: var(--color-text-soft);
+    background: rgba(255, 251, 243, 0.42);
+    line-height: 1.4;
+  }
+
+  .aside-toc {
+    display: grid;
+    gap: 0.48rem;
+  }
+
+  .aside-toc li {
+    line-height: 1.45;
+  }
+
+  .aside-toc .depth-3 {
+    padding-left: 0.75rem;
+  }
+
+  .aside-toc a {
+    color: var(--color-text-soft);
+    transition: color var(--transition);
+  }
+
+  .aside-toc a:hover {
+    color: var(--color-accent-strong);
+  }
+
+  @media (max-width: 860px) {
+    .hero-grid.has-visual,
+    .content-body {
+      grid-template-columns: 1fr;
+    }
+
+    .note-visual {
+      justify-self: start;
+      width: min(78vw, 18rem);
+    }
+
+    .note-aside {
+      position: static;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--space-4);
+      order: -1;
+    }
+
+    .toc-section {
+      grid-column: 1 / -1;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .content-hero {
+      padding-block: var(--space-7) var(--space-6);
+    }
+
+    .note-aside {
+      grid-template-columns: 1fr;
+    }
+
+    .note-visual {
+      width: min(88vw, 17rem);
+    }
   }
 </style>

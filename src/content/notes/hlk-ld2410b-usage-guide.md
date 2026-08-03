@@ -5,6 +5,8 @@ publishedAt: 2025-12-01
 publishedLabel: "2025 年 12 月"
 tags: ["HLK-LD2410B", "STM32", "Embedded C", "IoT", "Sensor"]
 listingTags: ["嵌入式", "C"]
+cover: "/images/notes/note-detail-visuals.jpg"
+coverPosition: "78% 24%"
 featured: false
 priority: 0
 draft: false

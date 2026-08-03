@@ -47,6 +47,8 @@ publishedAt: 2026-01-01
 publishedLabel: "2026 年 1 月"
 tags: ["具体框架", "协议", "硬件型号", "技术概念"]
 listingTags: ["开发方向", "编程语言"]
+cover: "/images/notes/<slug>/cover.webp"
+coverPosition: "50% 50%"
 featured: false
 priority: 0
 draft: true
@@ -62,6 +64,7 @@ relatedProjects: []
 - `publishedAt` 使用能够确认的日期。只知道月份时用该月第一天作为排序值，并通过 `publishedLabel` 展示真实精度；不要虚构具体发布日期。
 - `tags` 用于详情页，可以保留 3–6 个具体标签，例如芯片型号、框架、协议、组件和技术概念。
 - `listingTags` 只用于列表卡片和筛选，通常最多两个：一个开发方向，加一个确实出现在文档中的编程语言。
+- `cover` 用于详情页标题区右侧小图；`coverPosition` 可微调图片裁切焦点，例如 `"22% 24%"`。
 - `readingMinutes` 是可选详情元数据，不会出现在列表卡片；无法合理估算时可以省略。
 - `relatedProjects` 只填写仓库内真实存在的学习项目 slug。
 - 未完成或仍需核实的文章必须使用 `draft: true`。

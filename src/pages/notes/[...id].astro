@@ -13,7 +13,7 @@ interface Props {
 }
 
 const { entry } = Astro.props;
-const { Content } = await render(entry);
+const { Content, headings } = await render(entry);
 ---
 
 <ContentLayout
@@ -24,6 +24,9 @@ const { Content } = await render(entry);
   publishedLabel={entry.data.publishedLabel}
   updatedAt={entry.data.updatedAt}
   tags={entry.data.tags}
+  headings={headings}
+  cover={entry.data.cover}
+  coverPosition={entry.data.coverPosition}
   backHref="/notes/"
   backLabel="返回技术笔记"
   status={entry.data.readingMinutes ? `${entry.data.readingMinutes} 分钟阅读` : undefined}

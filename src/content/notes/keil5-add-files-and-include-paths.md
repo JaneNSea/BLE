@@ -5,6 +5,8 @@ publishedAt: 2025-09-01
 publishedLabel: "2025 年 9 月"
 tags: ["Keil µVision", "Embedded C", "STM32", "Build System"]
 listingTags: ["嵌入式", "C"]
+cover: "/images/notes/note-detail-visuals.jpg"
+coverPosition: "24% 78%"
 featured: false
 priority: 0
 draft: false
