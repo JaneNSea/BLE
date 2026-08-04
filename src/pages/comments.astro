@@ -2,6 +2,27 @@
 import RepoStar from '../components/ui/RepoStar.astro';
 import { site } from '../data/site';
 import BaseLayout from '../layouts/BaseLayout.astro';
+
+const wallNotes = [
+  {
+    index: '01',
+    title: '技术问题',
+    body: '把你遇到的工程问题、选型纠结或实现细节钉在这里，我会尽量认真回复。',
+    tone: 'green',
+  },
+  {
+    index: '02',
+    title: '产品想法',
+    body: '如果你对平台、安全、国产生态或 AI 工作流有想法，也欢迎直接展开讨论。',
+    tone: 'amber',
+  },
+  {
+    index: '03',
+    title: '公开边界',
+    body: '留言会同步到 GitHub Issues，请不要留下隐私、密钥、账号或未公开项目信息。',
+    tone: 'rose',
+  },
+];
 ---
 
 <BaseLayout
@@ -9,50 +30,63 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   description="使用 GitHub Issues 保存的公开留言板。"
 >
   <header class="comments-hero shell">
-    <p class="eyebrow">Guestbook / GitHub Issues</p>
-    <h1 class="page-title">留下一句话，<br />或者开始一场讨论。</h1>
-    <p class="lede">这里的留言公开保存在 GitHub Issues 中。你可以评论网站、讨论技术问题，也可以告诉我你正在做什么。</p>
+    <div>
+      <p class="eyebrow">Guestbook / Message Wall</p>
+      <h1 class="page-title">把想法钉在墙上，<br />让讨论慢慢长出来。</h1>
+      <p class="lede">这里的留言公开保存在 GitHub Issues 中。你可以评论网站、讨论技术问题，也可以告诉我你正在做什么。</p>
+    </div>
+
+    <aside class="wall-preview" aria-label="留言墙提示">
+      <span class="preview-pin" aria-hidden="true"></span>
+      <p>PUBLIC WALL</p>
+      <strong>GitHub 登录后留言</strong>
+      <small>评论会成为公开 Issue 讨论的一部分。</small>
+    </aside>
   </header>
 
-  <section class="board shell" aria-label="GitHub Issues 留言板">
+  <section class="message-wall shell" aria-label="GitHub Issues 留言墙">
     <div class="board-screw screw-one" aria-hidden="true"></div>
     <div class="board-screw screw-two" aria-hidden="true"></div>
     <div class="board-screw screw-three" aria-hidden="true"></div>
     <div class="board-screw screw-four" aria-hidden="true"></div>
 
-    <aside class="instruction-card object-card">
-      <span class="object-index">01 / BOARD GUIDE</span>
+    <div class="wall-string" aria-hidden="true"></div>
+
+    {wallNotes.map((note) => (
+      <article class={`sticker sticker--${note.tone}`}>
+        <span class="pin" aria-hidden="true"></span>
+        <small>{note.index}</small>
+        <h2>{note.title}</h2>
+        <p>{note.body}</p>
+      </article>
+    ))}
+
+    <aside class="sticker sticker--guide" aria-label="留言说明">
+      <span class="pin" aria-hidden="true"></span>
+      <small>BOARD GUIDE</small>
       <h2>留言说明</h2>
-      <p class="mode">CURIOUS & RESPECTFUL</p>
       <ol>
         <li><span>01</span><p>使用 GitHub 账号登录后发表评论。</p></li>
-        <li><span>02</span><p>留言将公开同步到本站仓库的 Issue。</p></li>
-        <li><span>03</span><p>请勿留下隐私、密钥或其他敏感信息。</p></li>
+        <li><span>02</span><p>首次评论时，Utterances 会请求授权。</p></li>
+        <li><span>03</span><p>评论数据公开保存在本站仓库的 Issues。</p></li>
       </ol>
       <a href={`${site.repository.url}/issues`} target="_blank" rel="noreferrer">直接查看 Issues ↗</a>
       <RepoStar compact />
     </aside>
 
-    <section class="comment-file" aria-labelledby="comment-title">
-      <div class="binder-ring ring-left" aria-hidden="true"></div>
-      <div class="binder-ring ring-right" aria-hidden="true"></div>
-      <div class="file-heading">
+    <section class="live-sticker" aria-labelledby="comment-title">
+      <span class="pin pin-main" aria-hidden="true"></span>
+      <div class="live-heading">
         <div>
-          <span>02</span>
-          <h2 id="comment-title">留言与讨论</h2>
-          <p>COMMENTS / MESSAGES / IDEAS</p>
+          <p class="eyebrow">Live comments</p>
+          <h2 id="comment-title">真实留言区</h2>
         </div>
-        <span class="file-state">PUBLIC</span>
-      </div>
-
-      <div class="comment-note">
-        <strong>写下你的想法</strong>
-        <p>首次评论时，GitHub 会请求授权 Utterances 代表你创建评论。评论数据始终保存在 GitHub Issues。</p>
+        <span>PUBLIC</span>
       </div>
 
       <div class="utterances-wrap">
         <Fragment
-          set:html={`<script src="https://utteranc.es/client.js" repo="JaneNSea/BLE" issue-term="pathname" theme="github-light" crossorigin="anonymous" async><\/script>`}
+          set:html={`<script src="https://utteranc.es/client.js" repo="${site.repository.slug}" issue-term="pathname" theme="boxy-light" crossorigin="anonymous" async><\/script>`}
         />
         <p class="comment-fallback">
           评论框没有显示？请先安装 Utterances，或
@@ -65,23 +99,90 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
 <style>
   .comments-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(15rem, 22rem);
+    gap: var(--space-7);
+    align-items: end;
     padding-block: var(--space-8) var(--space-7);
   }
 
-  .board {
+  .wall-preview {
+    position: relative;
+    padding: var(--space-5);
+    border: 1px solid rgba(91, 70, 41, 0.2);
+    border-radius: 0.5rem;
+    background: #fff8dd;
+    box-shadow: 0 18px 45px rgba(85, 62, 30, 0.1);
+    transform: rotate(1.2deg);
+  }
+
+  .wall-preview::before {
+    position: absolute;
+    top: -0.85rem;
+    left: 50%;
+    width: 4rem;
+    height: 1.35rem;
+    border: 1px solid rgba(113, 87, 52, 0.18);
+    background: rgba(228, 198, 138, 0.74);
+    content: '';
+    transform: translateX(-50%) rotate(-4deg);
+  }
+
+  .preview-pin {
+    position: absolute;
+    top: 0.8rem;
+    right: 1rem;
+    width: 0.72rem;
+    height: 0.72rem;
+    border-radius: 50%;
+    background: #b25a46;
+    box-shadow: 0 2px 5px rgba(79, 53, 31, 0.28);
+  }
+
+  .wall-preview p,
+  .wall-preview small {
+    margin: 0;
+    font-family: var(--font-mono);
+  }
+
+  .wall-preview p {
+    color: var(--color-accent-strong);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+  }
+
+  .wall-preview strong {
+    display: block;
+    margin-top: var(--space-4);
+    font-family: var(--font-display);
+    font-size: 1.8rem;
+    line-height: 1.12;
+  }
+
+  .wall-preview small {
+    display: block;
+    margin-top: var(--space-4);
+    color: var(--color-text-soft);
+    font-size: 0.74rem;
+  }
+
+  .message-wall {
     position: relative;
     display: grid;
-    grid-template-columns: minmax(15rem, 0.56fr) minmax(0, 1.44fr);
-    gap: clamp(1.5rem, 5vw, 4.5rem);
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: clamp(1rem, 3vw, 2rem);
     align-items: start;
     margin-bottom: var(--space-9);
-    padding: clamp(1.2rem, 4vw, 3.2rem);
+    padding: clamp(1rem, 4vw, 3.25rem);
     border: 1px solid rgba(91, 70, 41, 0.3);
-    border-radius: 2rem;
+    border-radius: 0.5rem;
     background-color: #eadcc7;
-    background-image: radial-gradient(circle, rgba(70, 53, 34, 0.72) 2.2px, transparent 2.6px);
-    background-position: 4px 4px;
-    background-size: 38px 38px;
+    background-image:
+      linear-gradient(120deg, rgba(255, 251, 243, 0.28), transparent 32%),
+      radial-gradient(circle, rgba(70, 53, 34, 0.64) 1.8px, transparent 2.2px);
+    background-position: 0 0, 4px 4px;
+    background-size: auto, 34px 34px;
     box-shadow:
       inset 0 0 0 7px rgba(255, 251, 244, 0.45),
       inset 0 0 35px rgba(95, 67, 30, 0.13),
@@ -104,75 +205,119 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   .screw-three { right: 1rem; bottom: 1rem; }
   .screw-four { bottom: 1rem; left: 1rem; }
 
-  .object-card,
-  .comment-file {
+  .wall-string {
+    position: absolute;
+    top: 5.4rem;
+    right: 3rem;
+    left: 3rem;
+    height: 1px;
+    background: rgba(91, 70, 41, 0.22);
+    content: '';
+    transform: rotate(-1.2deg);
+  }
+
+  .sticker,
+  .live-sticker {
     position: relative;
     z-index: 1;
+    min-width: 0;
+    border: 1px solid rgba(81, 65, 45, 0.24);
+    border-radius: 0.5rem;
+    box-shadow: 0 16px 35px rgba(77, 56, 29, 0.16);
   }
 
-  .instruction-card {
+  .sticker {
+    min-height: 14rem;
     padding: var(--space-5);
-    border: 1px solid rgba(81, 65, 45, 0.26);
-    border-radius: var(--radius-md);
-    background: rgba(255, 252, 245, 0.9);
-    box-shadow:
-      0 16px 35px rgba(77, 56, 29, 0.13),
-      inset 0 0 0 3px rgba(255, 255, 255, 0.48);
+    background: var(--paper, #fff8dd);
   }
 
-  .instruction-card::before {
+  .sticker--green {
+    --paper: #edf4df;
+    grid-column: span 3;
+    margin-top: var(--space-6);
+    transform: rotate(-2.5deg);
+  }
+
+  .sticker--amber {
+    --paper: #fff1c7;
+    grid-column: span 3;
+    transform: rotate(1.8deg);
+  }
+
+  .sticker--rose {
+    --paper: #f8ddd4;
+    grid-column: span 3;
+    margin-top: var(--space-5);
+    transform: rotate(2.4deg);
+  }
+
+  .sticker--guide {
+    --paper: #fffaf1;
+    grid-column: span 3;
+    transform: rotate(-1deg);
+  }
+
+  .pin {
     position: absolute;
-    top: -1.05rem;
-    left: 50%;
-    width: 3.8rem;
-    height: 1.45rem;
-    border: 1px solid rgba(86, 69, 49, 0.18);
-    background: rgba(213, 188, 149, 0.7);
-    content: '';
-    transform: translateX(-50%) rotate(-1.5deg);
+    top: 0.75rem;
+    right: 0.9rem;
+    width: 0.72rem;
+    height: 0.72rem;
+    border-radius: 50%;
+    background: #b86b42;
+    box-shadow:
+      inset 0 1px 1px rgba(255, 255, 255, 0.4),
+      0 2px 5px rgba(77, 56, 29, 0.28);
   }
 
-  .object-index,
-  .file-heading span,
-  .file-heading p,
-  .mode {
+  .pin-main {
+    top: 1rem;
+    left: 50%;
+    right: auto;
+    width: 0.86rem;
+    height: 0.86rem;
+    background: #9f4f43;
+    transform: translateX(-50%);
+  }
+
+  .sticker small,
+  .live-heading span {
     font-family: var(--font-mono);
   }
 
-  .object-index {
+  .sticker small {
     color: var(--color-text-faint);
     font-size: 0.66rem;
     font-weight: 750;
     letter-spacing: 0.08em;
   }
 
-  .instruction-card h2,
-  .file-heading h2 {
+  .sticker h2,
+  .live-heading h2 {
     margin: var(--space-3) 0 0;
     font-family: var(--font-display);
     font-weight: 700;
   }
 
-  .instruction-card h2 {
-    font-size: 2rem;
+  .sticker h2 {
+    font-size: clamp(1.45rem, 3vw, 1.9rem);
+    line-height: 1.08;
   }
 
-  .mode {
-    margin: var(--space-4) 0 var(--space-5);
-    padding-block: var(--space-3);
-    border-block: 1px solid var(--color-border-strong);
-    color: var(--color-accent-strong);
-    font-size: 0.7rem;
-    font-weight: 750;
+  .sticker p {
+    margin: var(--space-4) 0 0;
+    color: var(--color-text-soft);
+    font-size: 0.86rem;
   }
 
-  .instruction-card ol {
+  .sticker ol {
     margin: 0;
     padding: 0;
     list-style: none;
   }
 
-  .instruction-card li {
+  .sticker li {
     display: grid;
     grid-template-columns: 2rem 1fr;
     gap: var(--space-2);
@@ -180,20 +325,20 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     border-bottom: 1px dashed var(--color-border-strong);
   }
 
-  .instruction-card li span {
+  .sticker li span {
     color: var(--color-accent-strong);
     font-family: var(--font-mono);
     font-size: 0.68rem;
     font-weight: 750;
   }
 
-  .instruction-card li p {
+  .sticker li p {
     margin: 0;
     color: var(--color-text-soft);
     font-size: 0.8rem;
   }
 
-  .instruction-card > a {
+  .sticker > a {
     display: inline-block;
     margin-top: var(--space-5);
     color: var(--color-accent-strong);
@@ -201,45 +346,19 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     font-weight: 750;
   }
 
-  .comment-file {
-    min-width: 0;
+  .live-sticker {
+    grid-column: 1 / -1;
     padding: clamp(1.25rem, 4vw, 2.6rem);
-    border: 1px solid rgba(76, 70, 61, 0.34);
-    border-radius: var(--radius-md);
     background:
       linear-gradient(115deg, rgba(255, 255, 255, 0.44), transparent 28%),
-      rgba(251, 250, 247, 0.88);
+      repeating-linear-gradient(0deg, transparent 0 2.15rem, rgba(91, 70, 41, 0.045) 2.15rem 2.2rem),
+      #fffdf6;
     box-shadow:
-      0 22px 45px rgba(74, 54, 28, 0.17),
+      0 22px 48px rgba(74, 54, 28, 0.18),
       inset 0 0 0 5px rgba(255, 255, 255, 0.4);
-    backdrop-filter: blur(10px);
   }
 
-  .comment-file::after {
-    position: absolute;
-    inset: 0.8rem;
-    border: 1px solid rgba(94, 83, 67, 0.12);
-    border-radius: calc(var(--radius-md) - 0.35rem);
-    content: '';
-    pointer-events: none;
-  }
-
-  .binder-ring {
-    position: absolute;
-    z-index: 3;
-    top: -1.7rem;
-    width: 1.55rem;
-    height: 3.2rem;
-    border: 4px solid #827b70;
-    border-radius: 50%;
-    background: transparent;
-    box-shadow: inset 2px 0 #ddd9d0, 1px 2px 4px rgba(46, 39, 31, 0.25);
-  }
-
-  .ring-left { left: 19%; }
-  .ring-right { right: 19%; }
-
-  .file-heading {
+  .live-heading {
     position: relative;
     z-index: 1;
     display: flex;
@@ -250,51 +369,26 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     border-bottom: 1px solid rgba(91, 70, 41, 0.18);
   }
 
-  .file-heading > div > span {
-    color: var(--color-accent-strong);
-    font-size: 0.75rem;
-  }
-
-  .file-heading h2 {
+  .live-heading h2 {
     font-size: clamp(1.7rem, 4vw, 2.6rem);
+    line-height: 1.05;
   }
 
-  .file-heading p {
-    margin: var(--space-2) 0 0;
-    color: var(--color-text-faint);
-    font-size: 0.62rem;
-    letter-spacing: 0.08em;
-  }
-
-  .file-state {
+  .live-heading > span {
     padding: 0.35rem 0.6rem;
     border: 1px solid var(--color-border-strong);
-    border-radius: 999px;
+    border-radius: 0.45rem;
     color: var(--color-accent-strong);
-    font-size: 0.62rem !important;
+    background: rgba(255, 248, 221, 0.72);
+    font-size: 0.62rem;
     font-weight: 750;
-  }
-
-  .comment-note {
-    position: relative;
-    z-index: 1;
-    margin-block: var(--space-5);
-    padding: var(--space-4);
-    border-left: 3px solid #d2a344;
-    background: rgba(231, 196, 116, 0.17);
-  }
-
-  .comment-note p {
-    margin: var(--space-1) 0 0;
-    color: var(--color-text-soft);
-    font-size: 0.82rem;
   }
 
   .utterances-wrap {
     position: relative;
     z-index: 1;
     min-height: 15rem;
-    padding-top: var(--space-2);
+    margin-top: var(--space-5);
   }
 
   .utterances-wrap :global(.utterances) {
@@ -316,18 +410,29 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   }
 
   @media (max-width: 850px) {
-    .board {
+    .comments-hero,
+    .message-wall {
       grid-template-columns: 1fr;
-      gap: var(--space-7);
     }
 
-    .instruction-card {
-      max-width: 30rem;
+    .wall-preview {
+      max-width: 26rem;
+      transform: rotate(-0.8deg);
+    }
+
+    .sticker,
+    .live-sticker {
+      grid-column: 1;
+      transform: none;
+    }
+
+    .sticker {
+      min-height: auto;
     }
   }
 
   @media (max-width: 560px) {
-    .board {
+    .message-wall {
       width: min(calc(100% - 0.6rem), var(--content-width));
       padding: 1rem;
       background-size: 30px 30px;
@@ -337,8 +442,13 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       padding-block: var(--space-7);
     }
 
-    .binder-ring {
-      transform: scale(0.82);
+    .live-heading {
+      flex-direction: column;
+      gap: var(--space-3);
+    }
+
+    .wall-preview {
+      transform: none;
     }
   }
 </style>
