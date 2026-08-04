@@ -1,0 +1,332 @@
+---
+title: "Spark RDD 编程实战：用户访问日志的 Session 切分与统计"
+summary: "使用 Spark Core RDD API 对用户访问日志按时间排序并切分 Session，覆盖 30 分钟边界、乱序输入、确定性输出、异常处理与 Spark 集成测试。"
+publishedAt: 2026-07-26
+publishedLabel: "2026 年 7 月"
+tags: ["Apache Spark", "Spark Core", "RDD", "PySpark", "Session 切分", "日志分析"]
+listingTags: ["数据工程"]
+cover: "/images/notes/spark.png"
+coverPosition: "50% 50%"
+authors:
+  - name: "JaneNSea"
+    role: "作者"
+    avatar: "/avatar.jpg"
+featured: false
+priority: 0
+draft: false
+readingMinutes: 10
+relatedProjects: []
+---
+
+
+## 题目理解
+
+输入文件 `access_log.txt` 的每一行包含 `user_id,timestamp,page` 三个字段。程序需要对每个用户的访问记录按时间升序排列，再按照相邻访问的时间差切分 Session。若时间差严格大于 30 分钟，则后一条访问属于新 Session；若时间差等于 30 分钟，仍属于原 Session。
+
+输出字段为 `user_id,session_id,start_time,end_time,page_count`。其中 `session_id` 采用 `user_id_sN` 的形式，$N$ 从 1 开始。最终结果按 `user_id` 和 Session 序号升序输出，以保证结果确定性。
+
+## 设计思路
+
+### RDD 数据处理流程
+
+| 步骤 | RDD 操作 | 作用 |
+|---|---|---|
+| 1 | `textFile` | 读取日志文本，每一行成为一个字符串记录。 |
+| 2 | `filter` | 删除空行，避免无效记录进入解析过程。 |
+| 3 | `map` | 解析三个字段，并把时间字符串转换为 `datetime`，输出键值对 `(user_id, event)`。 |
+| 4 | `groupByKey` | 将同一用户的所有事件放入同一组，满足用户级 Session 切分的前提。 |
+| 5 | `flatMap` | 每组先按时间升序排序，再单次扫描并切分为多个 Session。 |
+| 6 | `sortBy` | 按 `(user_id, session_number)` 做全局排序。 |
+| 7 | `map` | 格式化为题目要求的逗号分隔输出行。 |
+
+### Session 切分算法
+
+对一个用户的事件序列，先按照时间戳升序排列。使用 `session_start`、`previous` 和 `page_count` 保存当前 Session 状态。逐条访问时计算：
+
+$$
+\Delta t = t_{\mathrm{current}} - t_{\mathrm{previous}}.
+$$
+
+当且仅当 $\Delta t > 30 \times 60$ 秒时输出当前 Session，并以当前事件开启下一 Session；否则仅增加 `page_count`。遍历结束后再输出最后一个 Session。
+
+这里必须使用“$>$”而不是“$\geq$”。因此 08:00 到 08:30 的间隔恰好为 30 分钟，两条记录仍在同一个 Session 中；10:00 到 10:31 的间隔为 31 分钟，需要切分。
+
+### 确定性与异常处理
+
+- 用户内部使用时间戳排序，能够处理输入乱序。
+- 最终使用 `sortBy((user_id, session_number))`，保证自动判题时输出顺序稳定。
+- 输入字段数错误、字段为空或时间格式错误时主动抛出异常，避免静默产生错误结果。
+- 输出目录已存在时默认拒绝覆盖；只有显式传入 `--overwrite` 才删除旧目录。
+
+### 复杂度分析
+
+设总访问数为 $n$，用户 $u$ 的访问数为 $m_u$。用户内排序的总时间复杂度为：
+
+$$
+O\left(\sum_u m_u\log m_u\right).
+$$
+
+切分扫描为 $O(n)$。设最终 Session 总数为 $s$，结果排序复杂度为 $O(s\log s)$。每个用户的 `groupByKey` 结果和排序列表需要 $O(m_u)$ 空间。
+
+该实现直接符合题目指定的 RDD API；生产环境若存在超大单用户，还需要进一步考虑数据倾斜和分区内排序方案。
+
+## 核心代码
+
+以下是工程中的完整主程序 `src/sessionize.py`。程序只导入 `SparkConf` 与 `SparkContext`，没有使用 DataFrame、Dataset、Spark SQL 或窗口函数。
+
+```python
+#!/usr/bin/env python3
+"""Use Spark Core RDD APIs to split user access logs into sessions."""
+
+from __future__ import annotations
+
+import argparse
+from datetime import datetime
+from typing import Iterable, Iterator, Tuple
+
+from pyspark import SparkConf, SparkContext
+
+
+TIMESTAMP_FORMAT = "%Y-%m-%d %H:%M:%S"
+SESSION_GAP_SECONDS = 30 * 60
+
+Event = Tuple[datetime, str, str]
+UserEvents = Tuple[str, Iterable[Event]]
+SessionRecord = Tuple[str, int, str, str, int]
+
+
+def parse_event(line: str) -> Tuple[str, Event]:
+    """Parse one CSV line into ``(user_id, event)``.
+
+    The input format is intentionally parsed without DataFrame/CSV APIs so the
+    whole solution remains a Spark Core RDD program.
+    """
+
+    parts = [part.strip() for part in line.split(",", 2)]
+    if len(parts) != 3:
+        raise ValueError(f"Invalid record (expected 3 fields): {line!r}")
+
+    user_id, timestamp_text, page = parts
+    if not user_id or not timestamp_text or not page:
+        raise ValueError(f"Invalid record (empty field): {line!r}")
+
+    try:
+        timestamp = datetime.strptime(timestamp_text, TIMESTAMP_FORMAT)
+    except ValueError as exc:
+        raise ValueError(
+            f"Invalid timestamp {timestamp_text!r}; "
+            f"expected format {TIMESTAMP_FORMAT}"
+        ) from exc
+
+    return user_id, (timestamp, timestamp_text, page)
+
+
+def split_user_sessions(user_events: UserEvents) -> Iterator[SessionRecord]:
+    """Split one user's events after sorting them by timestamp."""
+
+    user_id, events_iterable = user_events
+    events = sorted(events_iterable, key=lambda event: (event[0], event[2]))
+    if not events:
+        return
+
+    session_number = 1
+    session_start = events[0]
+    previous = events[0]
+    page_count = 1
+
+    for current in events[1:]:
+        gap_seconds = (current[0] - previous[0]).total_seconds()
+        if gap_seconds > SESSION_GAP_SECONDS:
+            yield (
+                user_id,
+                session_number,
+                session_start[1],
+                previous[1],
+                page_count,
+            )
+            session_number += 1
+            session_start = current
+            page_count = 1
+        else:
+            page_count += 1
+        previous = current
+
+    yield (
+        user_id,
+        session_number,
+        session_start[1],
+        previous[1],
+        page_count,
+    )
+
+
+def format_session(record: SessionRecord) -> str:
+    """Format a session record according to the required output schema."""
+
+    user_id, session_number, start_time, end_time, page_count = record
+    session_id = f"{user_id}_s{session_number}"
+    return f"{user_id},{session_id},{start_time},{end_time},{page_count}"
+
+
+def remove_output_if_needed(
+    sc: SparkContext, output_path: str, overwrite: bool
+) -> None:
+    """Protect existing output unless ``--overwrite`` was explicitly given."""
+
+    jvm = sc._jvm
+    hadoop_conf = sc._jsc.hadoopConfiguration()
+    path = jvm.org.apache.hadoop.fs.Path(output_path)
+    file_system = path.getFileSystem(hadoop_conf)
+
+    if file_system.exists(path):
+        if not overwrite:
+            raise FileExistsError(
+                f"Output already exists: {output_path}. "
+                "Use --overwrite to replace it."
+            )
+        if not file_system.delete(path, True):
+            raise OSError(f"Could not remove existing output: {output_path}")
+
+
+def build_argument_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Split access logs into sessions with Spark Core RDD APIs."
+    )
+    parser.add_argument("--input", required=True, help="Input file or URI")
+    parser.add_argument(
+        "--output",
+        default="-",
+        help="Output directory, or '-' to print rows to the terminal",
+    )
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Replace an existing output directory",
+    )
+    parser.add_argument(
+        "--partitions",
+        type=int,
+        default=1,
+        help="Number of partitions used by the final global sort (default: 1)",
+    )
+    parser.add_argument(
+        "--log-level",
+        default="ERROR",
+        choices=["ALL", "DEBUG", "ERROR", "FATAL", "INFO", "OFF", "TRACE", "WARN"],
+        help="Spark log level (default: ERROR)",
+    )
+    return parser
+
+
+def run(args: argparse.Namespace) -> None:
+    if args.partitions < 1:
+        raise ValueError("--partitions must be at least 1")
+
+    conf = SparkConf().setAppName("RDDUserSessionization")
+    sc = SparkContext.getOrCreate(conf=conf)
+    sc.setLogLevel(args.log_level)
+
+    try:
+        lines = sc.textFile(args.input)
+        events_by_user = (
+            lines.filter(lambda line: bool(line.strip()))
+            .map(parse_event)
+            .groupByKey()
+        )
+
+        sessions = (
+            events_by_user.flatMap(split_user_sessions)
+            .sortBy(
+                lambda record: (record[0], record[1]),
+                ascending=True,
+                numPartitions=args.partitions,
+            )
+            .map(format_session)
+        )
+
+        if args.output == "-":
+            for row in sessions.toLocalIterator():
+                print(row)
+        else:
+            remove_output_if_needed(sc, args.output, args.overwrite)
+            sessions.saveAsTextFile(args.output)
+            print(f"Saved session results to: {args.output}")
+    finally:
+        sc.stop()
+
+
+def main() -> None:
+    args = build_argument_parser().parse_args()
+    run(args)
+
+
+if __name__ == "__main__":
+    main()
+```
+
+### 代码结构说明
+
+程序的职责划分如下：
+
+- `parse_event`：校验并解析单条日志，将时间字符串转换为 `datetime`。
+- `split_user_sessions`：对单个用户的访问事件排序并执行 Session 切分。
+- `format_session`：生成题目要求的 CSV 输出格式。
+- `remove_output_if_needed`：通过 Hadoop FileSystem API 保护或覆盖输出目录。
+- `build_argument_parser`：定义输入、输出、分区数、覆盖和日志级别参数。
+- `run`：构建完整 RDD 处理链，并选择终端输出或目录写入。
+
+### 核心 RDD 链路
+
+核心数据流位于 `run` 函数中：
+
+```python
+lines = sc.textFile(args.input)
+events_by_user = (
+    lines.filter(lambda line: bool(line.strip()))
+    .map(parse_event)
+    .groupByKey()
+)
+
+sessions = (
+    events_by_user.flatMap(split_user_sessions)
+    .sortBy(
+        lambda record: (record[0], record[1]),
+        ascending=True,
+        numPartitions=args.partitions,
+    )
+    .map(format_session)
+)
+```
+
+该链路完成“读取 → 清洗 → 解析 → 用户分组 → Session 切分 → 全局排序 → 格式化输出”的完整过程。
+
+## 运行环境与方法
+
+### 推荐环境
+
+| 组件 | 推荐版本 | 作用 |
+|---|---|---|
+| 操作系统 | 64 位 Windows、macOS 或 Linux | 本地运行环境 |
+| Python | 3.11 | PySpark 驱动程序 |
+| Java JDK | 17 | Spark JVM 运行时 |
+| PySpark | 3.5.7 | Spark Core 与 `spark-submit` |
+
+本次实际验证环境为 Python 3.11、OpenJDK 17.0.19、PySpark 3.5.7；题目代码在该环境中通过全部测试。
+
+## 测试结果
+
+### 测试覆盖
+
+| 测试数据 | 重点验证内容 | 结果 |
+|---|---|---|
+| 测试数据 1 | 基础 Session 切分、多用户以及单事件 Session | 通过 |
+| 测试数据 2 | 30 分钟边界保留、31 分钟必须切分 | 通过 |
+| 测试数据 3 | 输入完全乱序，用户内部先排序后切分 | 通过 |
+
+此外，工程还包含 5 个单元测试，覆盖 30 分钟边界、超过 30 分钟、输入乱序、非法记录以及输出格式。集成测试将每组实际 Spark 输出与 `expected/` 目录中的期望结果逐行比较，三组均通过。
+
+## 结论
+
+本实现严格使用 Spark Core RDD API 完成日志读取、用户分组、组内时间排序、Session 切分、全局结果排序和格式化输出。边界条件使用“相邻间隔严格大于 30 分钟才切分”的判定，能够正确处理恰好 30 分钟、超过 30 分钟、输入乱序、单事件 Session 和多用户等情况。
+
+三组题目数据和 5 个单元测试均已实际运行通过。
