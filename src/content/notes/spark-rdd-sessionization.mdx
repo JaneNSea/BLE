@@ -18,12 +18,14 @@ readingMinutes: 10
 relatedProjects: []
 ---
 
+import Tex from '../../components/content/Tex.astro';
+
 
 ## 题目理解
 
 输入文件 `access_log.txt` 的每一行包含 `user_id,timestamp,page` 三个字段。程序需要对每个用户的访问记录按时间升序排列，再按照相邻访问的时间差切分 Session。若时间差严格大于 30 分钟，则后一条访问属于新 Session；若时间差等于 30 分钟，仍属于原 Session。
 
-输出字段为 `user_id,session_id,start_time,end_time,page_count`。其中 `session_id` 采用 `user_id_sN` 的形式，$N$ 从 1 开始。最终结果按 `user_id` 和 Session 序号升序输出，以保证结果确定性。
+输出字段为 `user_id,session_id,start_time,end_time,page_count`。其中 `session_id` 采用 `user_id_sN` 的形式，<Tex tex="N" /> 从 1 开始。最终结果按 `user_id` 和 Session 序号升序输出，以保证结果确定性。
 
 ## 设计思路
 
@@ -43,13 +45,11 @@ relatedProjects: []
 
 对一个用户的事件序列，先按照时间戳升序排列。使用 `session_start`、`previous` 和 `page_count` 保存当前 Session 状态。逐条访问时计算：
 
-$$
-\Delta t = t_{\mathrm{current}} - t_{\mathrm{previous}}.
-$$
+<Tex block tex={String.raw`\Delta t = t_{\mathrm{current}} - t_{\mathrm{previous}}.`} />
 
-当且仅当 $\Delta t > 30 \times 60$ 秒时输出当前 Session，并以当前事件开启下一 Session；否则仅增加 `page_count`。遍历结束后再输出最后一个 Session。
+当且仅当 <Tex tex={String.raw`\Delta t > 30 \times 60`} /> 秒时输出当前 Session，并以当前事件开启下一 Session；否则仅增加 `page_count`。遍历结束后再输出最后一个 Session。
 
-这里必须使用“$>$”而不是“$\geq$”。因此 08:00 到 08:30 的间隔恰好为 30 分钟，两条记录仍在同一个 Session 中；10:00 到 10:31 的间隔为 31 分钟，需要切分。
+这里必须使用“<Tex tex=">" />”而不是“<Tex tex={String.raw`\geq`} />”。因此 08:00 到 08:30 的间隔恰好为 30 分钟，两条记录仍在同一个 Session 中；10:00 到 10:31 的间隔为 31 分钟，需要切分。
 
 ### 确定性与异常处理
 
@@ -60,13 +60,11 @@ $$
 
 ### 复杂度分析
 
-设总访问数为 $n$，用户 $u$ 的访问数为 $m_u$。用户内排序的总时间复杂度为：
+设总访问数为 <Tex tex="n" />，用户 <Tex tex="u" /> 的访问数为 <Tex tex={String.raw`m_u`} />。用户内排序的总时间复杂度为：
 
-$$
-O\left(\sum_u m_u\log m_u\right).
-$$
+<Tex block tex={String.raw`O\left(\sum_u m_u\log m_u\right).`} />
 
-切分扫描为 $O(n)$。设最终 Session 总数为 $s$，结果排序复杂度为 $O(s\log s)$。每个用户的 `groupByKey` 结果和排序列表需要 $O(m_u)$ 空间。
+切分扫描为 <Tex tex="O(n)" />。设最终 Session 总数为 <Tex tex="s" />，结果排序复杂度为 <Tex tex={String.raw`O(s\log s)`} />。每个用户的 `groupByKey` 结果和排序列表需要 <Tex tex={String.raw`O(m_u)`} /> 空间。
 
 该实现直接符合题目指定的 RDD API；生产环境若存在超大单用户，还需要进一步考虑数据倾斜和分区内排序方案。
 
