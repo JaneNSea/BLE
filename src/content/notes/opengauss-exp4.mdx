@@ -1,0 +1,239 @@
+---
+title: "数据库实验四：视图与存储过程的高级应用"
+summary: "记录在 openGauss 中解除外键约束、创建与验证不同类型视图，并使用存储过程完成脏数据清洗和成绩汇总固化，同时分析 DataGrip 与 gsql 在脚本执行、会话上下文和事务提交方面的差异。"
+publishedAt: 2026-05-17
+publishedLabel: "2026 年 5 月"
+tags: ["openGauss", "视图", "存储过程", "数据清洗", "事务隔离", "DataGrip", "gsql"]
+listingTags: ["数据库"]
+cover: "/images/notes/opengauss_exp4/opengaussexp4.png"
+coverPosition: "50% 50%"
+authors:
+  - name: "JaneNSea"
+    role: "作者"
+    avatar: "/avatar.jpg"
+featured: false
+priority: 0
+draft: false
+readingMinutes: 16
+relatedProjects: []
+---
+
+import { withBase } from '../../utils/url';
+
+
+## 实验目的
+
+- 掌握数据库表外键约束的删除方法，理解打破参照完整性对脏数据产生的影响。
+- 熟练创建单表视图、多表连接视图以及聚合汇总视图，并验证不同类型视图在执行数据更新操作时的限制。
+- 掌握 openGauss 存储过程的编写规范，能够使用逻辑控制语句处理复杂的业务数据清洗与固化。
+- **深入探究并解决**数据库客户端工具（GUI 与 CLI）在执行复杂脚本、维护数据库会话上下文以及事务隔离级别上的底层机制差异。
+
+## 解除参照关系与视图操作
+
+### 打破参照完整性
+
+为了满足实验要求“不建立表之间的参照关系”并为后续输入不合法的脏数据做准备，首先在 DataGrip 中删除学籍管理系统中各表的外键约束。
+
+```sql
+ALTER TABLE xs DROP CONSTRAINT IF EXISTS xs_ydh_fkey; 
+ALTER TABLE js DROP CONSTRAINT IF EXISTS js_ydh_fkey;
+ALTER TABLE sk DROP CONSTRAINT IF EXISTS sk_kcbh_fkey;
+ALTER TABLE sk DROP CONSTRAINT IF EXISTS sk_jsbh_fkey;
+ALTER TABLE xk DROP CONSTRAINT IF EXISTS xk_xh_fkey;
+ALTER TABLE xk DROP CONSTRAINT IF EXISTS xk_kcbh_fkey;
+ALTER TABLE xk DROP CONSTRAINT IF EXISTS xk_jsbh_fkey;
+```
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp4/001.png')} alt="删除外键约束" />
+  <figcaption>删除外键约束</figcaption>
+</figure>
+
+### 创建单表视图与聚合计算视图
+
+建立单表视图提取男生信息，并测试通过单表视图更新数据（成功更新）。同时建立聚合视图计算学生（及格科目）的总成绩与总学分。
+
+```sql
+-- 创建单表视图
+CREATE VIEW v_xs_male AS
+SELECT * FROM xs WHERE xb = '男';
+UPDATE v_xs_male SET bj = '计科2班' WHERE xh = 'S002';
+DELETE FROM v_xs_male WHERE xh = 'S999';
+SELECT * FROM v_xs_male;
+
+-- 创建汇总视图
+CREATE VIEW v_student_summary AS
+SELECT
+    xk.xh,
+    SUM(xk.cj) AS total_score,
+    SUM(kc.xf) AS total_credits
+FROM xk
+         JOIN kc ON xk.kcbh = kc.kcbh
+WHERE xk.cj >= 60
+GROUP BY xk.xh;
+SELECT * FROM v_student_summary;
+```
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp4/1.png')} alt="单表视图" />
+  <figcaption>单表视图</figcaption>
+</figure>
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp4/002.png')} alt="聚合计算视图 v_student_summary 的查询结果" />
+  <figcaption>聚合计算视图 v_student_summary 的查询结果</figcaption>
+</figure>
+
+### 创建多表连接视图及更新限制验证
+
+将所有相关表（学生、成绩、课程、教师、学院）连接成一个综合视图，并测试对其进行更新操作。由于包含多表 JOIN，数据库底层拒绝了 UPDATE 操作，报错拦截成功，验证了复杂视图的不可直接更新性。
+
+```sql
+CREATE VIEW v_comprehensive_info AS
+SELECT xs.xh, xs.xm AS student_name, xyb.ymc AS college_name,
+       kc.kcm AS course_name, kc.xf AS credit, js.xm AS teacher_name, xk.cj AS score
+FROM xs JOIN xk ON xs.xh = xk.xh JOIN kc ON xk.kcbh = kc.kcbh
+JOIN js ON xk.jsbh = js.jsbh JOIN xyb ON xs.ydh = xyb.ydh;
+
+-- 尝试越权更新多表视图（被拦截）
+UPDATE v_comprehensive_info SET score = 100 WHERE xh = 'S001';
+```
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp4/003.png')} alt="创建多表大连接图" />
+  <figcaption>创建多表大连接图</figcaption>
+</figure>
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp4/2.png')} alt="验证多表连接视图不可直接更新" />
+  <figcaption>验证多表连接视图不可直接更新</figcaption>
+</figure>
+
+## 存储过程的应用与脏数据清洗（含深度排查）
+
+### 注入不合法数据
+
+删除了学生表的主键约束后，人工插入一条学号冲突的脏数据（两个 S001）。
+
+```sql
+ALTER TABLE xs DROP CONSTRAINT IF EXISTS xs_pkey;
+INSERT INTO xs (xh, xm, xb, ydh) VALUES ('S001', '假小明', '男', '01');
+```
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp4/3.png')} alt="插入脏数据" />
+  <figcaption>插入脏数据</figcaption>
+</figure>
+
+### 存储过程的编译踩坑与环境切换
+
+在 DataGrip 中直接执行 openGauss 存储过程代码时，频繁触发 `subprogram body is not ended correctly` 报错。
+
+**排查过程：**经分析得知，DataGrip 默认将分号（`;`）作为单条 SQL 的结束符，导致含有逻辑控制流的存储过程体被中途强行截断发往数据库。因此，必须转入 FinalShell 原生 `gsql` 终端，并使用单独一行的斜杠（`/`）作为完整代码块的编译结束符。
+
+### 数据库上下文错位与事务未提交排查
+
+转入 FinalShell 编译调用存储过程后，发现 DataGrip 中的数据依然没有被清理，也没有计算出总成绩，甚至引发了 `relation does not exist`（表不存在）的错误。
+
+**排查过程：**
+
+1. **连接上下文错误：**观察 FinalShell 的终端提示符为 `openGauss=>`，而实际业务表存放在名为 `newstuma` 的数据库中。命令行默认连接的是内置库，导致在空库里输出了逻辑。利用 `\c newstuma` 命令重新切入目标数据库并建立结果表后解决。
+2. **事务隔离与 Auto-Commit：**在 `newstuma` 库中成功执行清洗后，DataGrip 里看到的脏数据仍未消失。排查发现，`gsql` 终端默认关闭了自动提交（Auto-Commit），当前会话的 `DELETE` 并没有持久化。执行 `COMMIT;` 手动提交事务后，DataGrip 瞬间同步，验证成功。
+
+### 在正确的上下文中完成存储过程的清洗与计算固化
+
+```sql
+-- 1. 切换正确的数据库
+\c newstuma
+
+-- 2. 编译并调用脏数据清洗存储过程
+CREATE OR REPLACE PROCEDURE sp_clean_duplicate_xs() AS
+DECLARE
+    dup_xh VARCHAR(20);
+BEGIN
+    FOR dup_xh IN SELECT xh FROM xs GROUP BY xh HAVING COUNT(*) > 1 LOOP
+        DELETE FROM xs WHERE xh = dup_xh;
+    END LOOP;
+END;
+/
+CALL sp_clean_duplicate_xs();
+
+-- 3. 创建总成绩物理表
+CREATE TABLE student_total_score (
+    xh VARCHAR(20) PRIMARY KEY, total_score NUMERIC(6,1), total_credits NUMERIC(4,1)
+);
+
+-- 4. 编译并调用成绩固化存储过程
+CREATE OR REPLACE PROCEDURE sp_calculate_total_scores() AS
+BEGIN
+    TRUNCATE TABLE student_total_score;
+    INSERT INTO student_total_score (xh, total_score, total_credits)
+    SELECT xh, total_score, total_credits FROM v_student_summary;
+END;
+/
+CALL sp_calculate_total_scores();
+
+-- 5. 提交事务并排序查询结果
+COMMIT;
+SELECT * FROM student_total_score ORDER BY total_score DESC;
+```
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp4/4.png')} alt="在 DataGrip 会报错" />
+  <figcaption>在 DataGrip 会报错</figcaption>
+</figure>
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp4/5.png')} alt="在原生终端完成编译、调用、提交数据清洗" />
+  <figcaption>在原生终端完成编译、调用、提交数据清洗</figcaption>
+</figure>
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp4/6.png')} alt="在原生终端完成编译、调用、提交总成绩倒序查询" />
+  <figcaption>在原生终端完成编译、调用、提交总成绩倒序查询</figcaption>
+</figure>
+
+## 思考与讨论：视图、存储过程与触发器的对比分析
+
+在现代关系型数据库开发中，视图、存储过程与触发器是三大核心数据库对象。结合本次实验（并且通过查阅资料与询问 AI），对其使用范围及优缺点进行如下总结：
+
+### 1. 视图（View）
+
+- **使用范围：**
+  - **简化复杂查询：**将极其复杂的多表 JOIN 查询或聚合计算固化为视图（如实验中的综合信息视图），让前台调用如同查询单表一样简单。
+  - **增强数据安全：**针对不同权限的用户暴露不同的列（如隐藏密码或薪资等敏感字段），实现行列级别的数据权限控制。
+  - **逻辑数据独立性：**当底层表结构发生微调时，只需修改视图定义，而不必修改上层应用代码。
+- **优点：**对用户透明且使用简单；不占用实际物理存储空间（仅保存 SQL 定义）；大幅提升系统安全性。
+- **缺点：** **性能开销**（每次查询视图时数据库都要重新解析执行底层 SQL）；**更新严格受限**（实验已证实，包含多表关联、分组或聚合函数的视图无法直接进行增删改操作）。
+
+### 2. 存储过程（Stored Procedure）
+
+- **使用范围：**
+  - **复杂业务逻辑封装：**适用于包含大量条件判断、循环控制的批量数据处理（如实验中的利用游标循环清理重复学号）。
+  - **定时任务与数据清洗（ETL）：**适用于夜间批处理、结账汇总（如实验中的总成绩计算与持久化保存）。
+  - **高频核心接口：**对于对性能要求极高、且需要减少应用端与数据库之间网络传输开销的核心业务。
+- **优点：** **执行效率高**（在数据库端一次编译，多次执行）；**降低网络流量**（客户端只需发送调用命令及参数）；封装性好，易于复用。
+- **缺点：** **可移植性极差**（不同数据库如 openGauss、MySQL、SQL Server 之间的方言差异巨大）；缺乏现代化的调试工具，维护成本高；过度使用会占用过多数据库服务器 CPU 资源。
+
+### 3. 触发器（Trigger）
+
+- **使用范围：**
+  - **复杂的完整性约束：**实现常规 `CHECK` 约束无法完成的跨表业务规则限制。
+  - **操作审计与日志记录：**自动拦截对核心表的数据篡改，并在后台静默将旧数据与操作时间写入审计日志表。
+  - **数据级联同步：**如业务系统中“新增订单”操作自动触发“扣减商品库存”的动作。
+- **优点：** **全自动执行**，对应用层完全透明；响应及时，是保护数据一致性与业务规则的“最后一道防线”。
+- **缺点：** **隐蔽性过强**（后台静默执行，极易给系统排错和性能调优带来困扰）；若设计不当（如互相触发），极易引发级联雪崩甚至死循环；会显著增加底层 `INSERT/UPDATE/DELETE` 操作的性能开销。
+
+## 实验结论
+
+- **参照完整性与数据清洗：**验证了外键约束对维持数据一致性的决定性作用。解除约束后极易导致“脏数据”（如学号冲突）的产生；而通过编写存储过程（使用 `FOR IN LOOP` 游标）可以高效、批量地完成脏数据的查找与清洗。
+- **视图的更新限制：**实验证明，单表视图等价于原表的透明窗口，支持 `UPDATE` 等数据修改操作；而包含多表 `JOIN` 或聚合计算的复杂视图，数据库底层会严格拦截对其进行的直接更新操作，从而保障了多表关联数据的安全。
+- **存储过程与数据固化：**成功利用 openGauss 的存储过程封装了复杂的聚合计算逻辑，实现了将视图中的汇总结果定期刷入静态物理表（ETL 雏形），并通过 `ORDER BY` 验证了计算与排序的准确性。
+- **事务隔离级别验证：**实验证实了 openGauss 命令行终端（`gsql`）默认关闭自动提交（Auto-Commit）的特性。在未执行 `COMMIT` 前，当前会话的数据修改（如 `DELETE`）对其他会话（如 DataGrip）完全不可见，完美验证了数据库事务的隔离性（Isolation）。
+
+## 实验体会
+
+- **打破了对图形化 IDE 的盲目依赖：**在编写存储过程时，DataGrip 固然好用，但它以分号简单粗暴切分语句的机制，使其在处理复杂的 Oracle/openGauss 风格代码块时频繁报错。这迫使我转向原生 `gsql` 命令行，并学会了使用 `/` 作为整体编译符，让我真正跳出了工具的舒适区，理解了客户端与服务端编译器的底层交互原理。
+- **对会话上下文（Context）的深刻教训：**在原生终端中，由于初期未明确当前连接的数据库，导致在内置库中发生“对空库输出”的乌龙。通过比对左侧目录树与命令行提示符，我深刻意识到了 `\c` 指令在明确会话环境中的重要性，业务操作前必须先确认“自己在哪”。
+- **ACID 特性：**在命令行中明明已经删除了脏数据，但在另一侧的 DataGrip 中数据却纹丝不动。通过排查得知这是由于事务未提交被隔离后，在命令行敲下 `COMMIT;` 图形界面中的脏数据就消失了。充分体现了事物的隔离性与持久性。
+- 由于个人能力及时间精力综合考虑，个人无法完成触发器部分的实验。实验还有很大的提升空间。

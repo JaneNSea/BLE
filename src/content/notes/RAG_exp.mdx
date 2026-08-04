@@ -1,0 +1,694 @@
+---
+title: "简单的检索增强生成（RAG）实验"
+summary: "实现一个基于 OpenAI SDK 与 Qwen Embedding 的轻量级 RAG 系统，覆盖文档切分、向量索引、余弦检索、上下文注入，并进一步讨论 Tool 化、语义切分、查询重写与 Rerank。"
+publishedAt: 2026-05-03
+publishedLabel: "2026 年 5 月"
+tags: ["RAG", "检索增强生成", "Embedding", "Rerank", "OpenAI SDK", "Qwen", "Python"]
+listingTags: ["人工智能"]
+cover: "/images/notes/rag.png"
+coverPosition: "50% 50%"
+authors:
+  - name: "JaneNSea"
+    role: "作者"
+    avatar: "/avatar.jpg"
+featured: false
+priority: 0
+draft: false
+readingMinutes: 22
+relatedProjects: []
+---
+
+| 项目 | 内容 |
+|---|---|
+| 课程名称 | 垂类大模型与 AI 前沿技术 |
+| 实验日期 | 2026 年 5 月 3 日 |
+| 实验环境 | Python 3.12、OpenAI SDK、NumPy |
+| 模型服务 | 阿里云百炼平台（Qwen 系列） |
+
+## 核心代码实现
+
+本部分展示实验基础功能的代码实现，包括文本切分、向量生成、相似度计算、检索和上下文注入。
+
+### Chunk 数据类定义
+
+```python
+from dataclasses import dataclass
+
+@dataclass
+class Chunk:
+    """知识库中的一个文本分块"""
+    content: str  # 文本内容
+    source: str   # 来源文件名
+    index: int    # 在来源文件中的分块序号
+```
+
+### RAGLibrary 类初始化
+
+```python
+class RAGLibrary:
+    def __init__(
+        self,
+        client: OpenAI,
+        embedding_model: str,
+        chunk_size: int = 500,
+        chunk_overlap: int = 100,
+    ) -> None:
+        if chunk_size <= 0:
+            raise ValueError("chunk_size must be greater than 0")
+        if chunk_overlap < 0 or chunk_overlap >= chunk_size:
+            raise ValueError("chunk_overlap must be >= 0 and < chunk_size")
+
+        self.client = client
+        self.chunk_size = chunk_size
+        self.chunk_overlap = chunk_overlap
+        self.embedding_model = embedding_model
+        self.chunks: list[Chunk] = []
+        self.embeddings: np.ndarray | None = None
+```
+
+### 文档加载
+
+```python
+def load_documents(self, dir_path: str | Path) -> None:
+    """从目录读取 txt/md 文档，并切分成 chunks。"""
+    dir_path = Path(dir_path)
+    if not dir_path.is_dir():
+        raise NotADirectoryError(f"Not a directory: {dir_path}")
+
+    self.chunks = []
+    self.embeddings = None
+
+    for path in dir_path.rglob("*"):
+        if path.suffix.lower() not in {".txt", ".md"}:
+            continue
+        content = path.read_text(encoding="utf-8")
+        for text in self._split_text(content):
+            self.chunks.append(
+                Chunk(content=text, source=path.name, index=len(self.chunks))
+            )
+```
+
+### 文本切分（基础版：固定大小滑动窗口）
+
+```python
+def _split_text(self, text: str) -> list[str]:
+    """固定大小滑动窗口切分文本。"""
+    text = text.strip()
+    if not text:
+        return []
+
+    chunks: list[str] = []
+    step = self.chunk_size - self.chunk_overlap
+
+    for i in range(0, len(text), step):
+        chunk = text[i : i + self.chunk_size]
+        if chunk.strip():
+            chunks.append(chunk)
+
+    return chunks
+```
+
+### Embedding 向量生成
+
+```python
+def create_embeddings(self) -> None:
+    """为所有 chunk 生成向量表示。"""
+    if not self.chunks:
+        raise ValueError("No chunks loaded. Call load_documents() first.")
+
+    texts = [chunk.content for chunk in self.chunks]
+    vectors: list[list[float]] = []
+    batch_size = 10  # Qwen embeddings 一次最多 10 条
+
+    for i in range(0, len(texts), batch_size):
+        batch = texts[i : i + batch_size]
+        response = self.client.embeddings.create(
+            model=self.embedding_model,
+            input=batch,
+        )
+        vectors.extend(item.embedding for item in response.data)
+
+    self.embeddings = np.array(vectors, dtype=np.float32)
+```
+
+### 索引的保存与加载
+
+```python
+def save_index(self, filepath: str | Path) -> None:
+    if self.embeddings is None:
+        raise ValueError("No embeddings found.")
+    filepath = Path(filepath)
+    filepath.parent.mkdir(parents=True, exist_ok=True)
+    np.savez(
+        filepath,
+        embeddings=self.embeddings,
+        chunks_content=np.array([c.content for c in self.chunks]),
+        chunks_source=np.array([c.source for c in self.chunks]),
+        chunks_index=np.array([c.index for c in self.chunks]),
+    )
+
+def load_index(self, filepath: str | Path) -> None:
+    filepath = Path(filepath)
+    if not filepath.exists():
+        raise FileNotFoundError(f"Index file not found: {filepath}")
+    data = np.load(filepath)
+    self.embeddings = data["embeddings"]
+    self.chunks = [
+        Chunk(
+            content=str(data["chunks_content"][i]),
+            source=str(data["chunks_source"][i]),
+            index=int(data["chunks_index"][i]),
+        )
+        for i in range(len(data["chunks_content"]))
+    ]
+```
+
+### 余弦相似度计算
+
+```python
+@staticmethod
+def _cosine_similarity(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """计算 a 中每个向量与 b 的余弦相似度（支持矩阵形式）。
+    a: (n, d), b: (d,) 或 (m, d)
+    返回: (n,) 或 (n, m)
+    """
+    a_norm = np.linalg.norm(a, axis=1, keepdims=True)
+    if b.ndim == 1:
+        b_norm = np.linalg.norm(b)
+        return np.dot(a, b) / (a_norm.squeeze() * b_norm + 1e-10)
+    else:
+        b_norm = np.linalg.norm(b, axis=1, keepdims=True)
+        return np.dot(a, b.T) / (a_norm * b_norm.T + 1e-10)
+```
+
+### 向量检索
+
+```python
+def search(self, query: str, top_k: int = 5) -> list[tuple[Chunk, float]]:
+    """返回与 query 最相似的 top_k 个文本分块。"""
+    if self.embeddings is None:
+        raise ValueError("No embeddings found.")
+    if top_k <= 0:
+        return []
+
+    response = self.client.embeddings.create(
+        model=self.embedding_model,
+        input=[query],
+    )
+    query_embedding = np.array(response.data[0].embedding, dtype=np.float32)
+
+    similarities = self._cosine_similarity(self.embeddings, query_embedding)
+    top_indices = np.argsort(similarities)[::-1][:top_k]
+
+    results = []
+    for idx in top_indices:
+        results.append((self.chunks[idx], float(similarities[idx])))
+    return results
+```
+
+### 上下文构建
+
+```python
+def build_context(self, query: str, top_k: int = 5) -> str:
+    """检索相关文本并用分隔符拼接成上下文字符串。"""
+    results = self.search(query, top_k=top_k)
+    if not results:
+        return ""
+    parts = []
+    for chunk, score in results:
+        parts.append(f"[来源: {chunk.source}]\\n{chunk.content}")
+    return "\\n\\n".join(parts)
+```
+
+### 辅助函数：加载或构建知识库
+
+```python
+def load_or_build_rag_library(
+    client: OpenAI,
+    embedding_model: str = "text-embedding-v4",
+    docs_dir: str | Path = "library",
+    index_path: str | Path = "library/index.npz",
+    verbose: bool = True,
+) -> RAGLibrary:
+    """优先加载已存在索引；若不存在则从文档构建并保存。"""
+    docs_dir = Path(docs_dir)
+    index_path = Path(index_path)
+    rag = RAGLibrary(client=client, embedding_model=embedding_model)
+
+    if index_path.exists():
+        if verbose:
+            print(f"[RAG] 加载索引: {index_path}")
+        rag.load_index(index_path)
+    else:
+        if verbose:
+            print(f"[RAG] 未找到索引，开始构建...")
+        rag.load_documents(docs_dir)
+        rag.create_embeddings()
+        rag.save_index(index_path)
+        if verbose:
+            print(f"[RAG] 索引构建完成: {index_path}")
+
+    return rag
+```
+
+### Agent 主程序（上下文注入）
+
+```python
+def build_rag_system_prompt(rag: RAGLibrary, messages: list[dict]) -> str:
+    """把最新问题的检索结果拼接到系统提示词中。"""
+    latest_query = ""
+    for message in reversed(messages):
+        if message.get("role") == "user":
+            latest_query = str(message.get("content", ""))
+            break
+
+    if not latest_query.strip():
+        return SYSTEM_PROMPT
+
+    context = rag.build_context(latest_query, top_k=5)
+    if not context.strip():
+        return SYSTEM_PROMPT
+
+    return (
+        f"{SYSTEM_PROMPT}\\n\\n"
+        "以下是从知识库检索到的 context，请严格基于这些内容回答：\\n"
+        f"{context}"
+    )
+```
+
+## 进阶任务
+
+### 进阶任务一：将 RAG 检索封装为 Tool
+
+**任务描述：**将当前的 RAG 检索过程封装为一个 tool，使 Agent 可以根据用户问题自主决定是否进行检索，以及使用什么查询内容进行检索。
+
+**核心实现：**
+
+```python
+TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "search_knowledge_base",
+            "description": "从知识库中检索与问题相关的文本内容。"
+                          "当用户询问关于学校规定、制度、手册等"
+                          "具体事实性问题时，应使用此工具。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "用于检索的查询语句，"
+                                       "应准确概括用户的问题意图"
+                    }
+                },
+                "required": ["query"]
+            }
+        }
+    }
+]
+```
+
+### 进阶任务二：基于分隔符优先级的智能切分
+
+**任务描述：**实现一种基于分隔符的切分方法，定义分隔符优先级（段落→换行→句子），按优先级切分文本，维护 chunk_buffer 保证长度不超过 chunk_size。
+
+**核心实现：**
+
+```python
+def _split_text_semantic(self, text: str) -> list[str]:
+    """基于分隔符优先级的智能切分。
+    优先级：段落(\n\n) -> 换行(\n) -> 句子(。！？；) -> 按长度强制切分
+    """
+    text = text.strip()
+    if not text:
+        return []
+
+    separators = ["\n\n", "\n", "。", "！", "？", "；"]
+
+    def split_with_sep(t: str, sep: str) -> list[str]:
+        if sep not in t:
+            return [t]
+        parts = t.split(sep)
+        result = []
+        for i in range(len(parts) - 1):
+            if parts[i].strip():
+                result.append(parts[i].strip() + sep)
+        if parts[-1].strip():
+            result.append(parts[-1].strip())
+        return result
+
+    def recursive_split(pieces: list[str], sep_idx: int) -> list[str]:
+        if sep_idx >= len(separators):
+            # 无法再切，退化为按长度切分
+            result = []
+            step = self.chunk_size - self.chunk_overlap
+            for piece in pieces:
+                piece = piece.strip()
+                if not piece:
+                    continue
+                if len(piece) <= self.chunk_size:
+                    result.append(piece)
+                else:
+                    for i in range(0, len(piece), step):
+                        chunk = piece[i : i + self.chunk_size]
+                        if chunk.strip():
+                            result.append(chunk.strip())
+            return result
+
+        sep = separators[sep_idx]
+        result = []
+        for piece in pieces:
+            piece = piece.strip()
+            if not piece:
+                continue
+            if len(piece) <= self.chunk_size:
+                result.append(piece)
+            else:
+                sub_pieces = split_with_sep(piece, sep)
+                result.extend(recursive_split(sub_pieces, sep_idx + 1))
+        return result
+
+    # 第一级：按段落切分
+    initial_pieces = split_with_sep(text, "\n\n")
+    all_pieces = recursive_split(initial_pieces, 1)
+
+    # 合并小片段到 chunk_buffer
+    chunks = []
+    buffer = ""
+    for piece in all_pieces:
+        piece = piece.strip()
+        if not piece:
+            continue
+        if not buffer:
+            buffer = piece
+        elif len(buffer) + len(piece) <= self.chunk_size:
+            buffer += piece
+        else:
+            chunks.append(buffer)
+            # overlap：保留 buffer 末尾内容
+            if self.chunk_overlap > 0:
+                overlap_start = max(0, len(buffer) - self.chunk_overlap)
+                overlap_text = buffer[overlap_start:]
+                if len(overlap_text) + len(piece) <= self.chunk_size:
+                    buffer = overlap_text + piece
+                else:
+                    buffer = piece
+            else:
+                buffer = piece
+    if buffer:
+        chunks.append(buffer)
+    return [c.strip() for c in chunks if c.strip()]
+```
+
+### 进阶任务三：LLM 重排序（Rerank）
+
+**任务描述：**使用 LLM 对检索结果进行筛选或排序，将 top_k 文本输入 LLM，让模型选择最相关的若干条或重新排序，使用筛选后的结果构造最终上下文。
+
+**核心实现：**
+
+```python
+def rerank(self, query: str, candidates: list[tuple[Chunk, float]], 
+           top_n: int = 5) -> list[tuple[Chunk, float]]:
+    """使用 LLM 对检索结果进行重排序/筛选。"""
+    if not candidates or not self.chat_model:
+        return candidates[:top_n]
+
+    chunks_desc = "\n\n".join([
+        f"【{i+1}】来源: {chunk.source}\n内容: {chunk.content[:400]}"
+        for i, (chunk, _) in enumerate(candidates)
+    ])
+
+    prompt = f"""请评估以下文本片段与用户问题的相关性。
+
+用户问题：{query}
+
+文本片段：
+{chunks_desc}
+
+请按以下步骤输出：
+1. 对每个片段给出相关性评分（0-10分）和一句话理由
+2. 最后只输出按相关性排序的片段编号列表，格式严格为：[3, 1, 5, ...]
+
+评分：
+1. 片段1: X/10 - 理由
+2. 片段2: X/10 - 理由
+...
+
+最终排序："""
+
+    response = self.client.chat.completions.create(
+        model=self.chat_model,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.1,
+    )
+    content = response.choices[0].message.content
+
+    # 解析最终排序的编号列表
+    import re
+    match = re.search(r'\[([\d\s,]+)\]', content)
+    if match:
+        nums_str = match.group(1)
+        indices = []
+        for x in nums_str.split(","):
+            x = x.strip()
+            if x.isdigit():
+                idx = int(x) - 1
+                if 0 <= idx < len(candidates):
+                    indices.append(idx)
+        if indices:
+            return [(candidates[i][0], candidates[i][1]) 
+                    for i in indices[:top_n]]
+
+    # 解析失败则回退到原始相似度排序
+    return candidates[:top_n]
+```
+
+## 思考题
+
+### 思考题一：基于语义信息的文本切分
+
+**问题：**进阶任务中使用了"基于分隔符优先级"的切分方法，但这种方法仍然没有真正理解语义。思考：是否可以基于语义信息（如 embedding）来进行切分？这种方法相比规则切分，有什么优缺点？
+
+**解答：**
+
+**1. 基于 Embedding 的语义切分原理**
+
+基于语义信息的文本切分（Semantic Chunking）核心思想是：将文本按句子或固定窗口滑动生成 embedding，然后计算相邻片段之间的语义相似度。当相似度低于某个阈值时，说明此处发生了语义转折，应在此处切分。具体步骤如下：
+
+1.  **细粒度拆分：**先将文本拆分为句子或短段落（作为最小单元）。
+
+2.  **Embedding 编码：**对每个最小单元生成 embedding 向量。
+
+3.  **相似度计算：**计算相邻单元之间的余弦相似度。
+
+4.  **阈值判断：**若相邻单元相似度低于阈值 $\theta$，则在此处切分，形成新的 chunk 边界。
+
+5.  **合并与调整：**对切分后的片段进行长度检查，过短的片段尝试与相邻片段合并，过长的片段进一步细分。
+
+**2. 与规则切分的对比**
+
+| **维度**           | **语义切分（Embedding-based）**    | **规则切分（分隔符/固定长度）** |
+|:-------------------|:-----------------------------------|:--------------------------------|
+| **核心依据**       | 文本的语义连贯性                   | 文本的表面结构（标点、长度）    |
+| **切分精度**       | 高，能在语义转折处精准切分         | 低，可能切断语义连贯的段落      |
+| **计算开销**       | 高，需要多次调用 Embedding API     | 低，纯字符串操作                |
+| **对噪声的鲁棒性** | 较强，不受排版格式影响             | 较弱，依赖文本格式规范          |
+| **可解释性**       | 较弱，阈值选择需要调参             | 强，规则直观明确                |
+| **适用场景**       | 长文档、语义复杂、结构不规整的文本 | 格式规范、结构清晰的文档        |
+
+**3. 优缺点总结**
+
+**优点：**
+
+- **语义完整性高：**切分边界位于语义转折点，每个 chunk 内部主题一致，检索时相关性更高。
+
+- **自适应性强：**不依赖特定分隔符，对格式混乱的文本（如 OCR 识别结果、网页抓取内容）效果更好。
+
+- **减少信息碎片化：**避免了固定长度切分将一句话切断的问题。
+
+**缺点：**
+
+- **计算成本高：**需要对每个最小单元调用 Embedding API，对于长文档开销显著。
+
+- **阈值敏感：**相似度阈值 $\theta$ 的选择直接影响切分效果，需要针对具体领域调参。
+
+- **边界模糊：**某些过渡性段落语义相似度处于临界值，可能导致切分不稳定。
+
+- **实现复杂：**需要处理合并、再切分等后处理逻辑，代码复杂度高于规则切分。
+
+**4. 实践建议**
+
+在实际工程中，可采用**混合策略**：先用规则切分（如按段落）进行粗分，再对超长段落使用语义切分进行细分。这样既保证了效率，又提升了语义连贯性。
+
+### 思考题二：问题与答案的语义空间差异
+
+**问题：**在本实验中，我们使用用户问题的 embedding 来检索相关文本。思考：用户问题与答案的语义一定是接近的吗？是否存在问题与答案不在同一表述空间的情况？可以如何改进（例如：查询重写技术）？
+
+**解答：**
+
+**1. 问题与答案的语义差异**
+
+用户问题的 embedding 与答案文本的 embedding**不一定接近**，存在以下几种"表述空间不一致"的情况：
+
+1.  **问法与答法不对称：**
+
+    - 用户问："挂科了怎么办？"
+
+    - 文档写："课程考核不及格者，可于下学期初参加补考。"
+
+    - 分析："挂科"与"不及格"是同一概念的不同表述，但 embedding 空间中的向量可能不够接近。
+
+2.  **问题抽象、答案具体：**
+
+    - 用户问："学校的奖学金政策是什么？"
+
+    - 文档写："国家奖学金每生每年8000元，校长奖学金每生每年5000元..."
+
+    - 分析：问题是一个抽象概括，答案是一系列具体条款，语义重心不同。
+
+3.  **隐含推理型问题：**
+
+    - 用户问："我上学期两门课不及格，还能毕业吗？"
+
+    - 文档写："累计不及格学分超过20分者，不予毕业。"
+
+    - 分析：答案没有直接回答"两门课"的情况，需要模型结合用户具体情况推理。
+
+4.  **多跳/组合问题：**
+
+    - 用户问："转专业后之前的学分怎么算？"
+
+    - 答案可能分散在"转专业管理办法"和"学分认定办法"两个文档中。
+
+    - 分析：单一 embedding 检索难以覆盖跨文档的信息组合。
+
+**2. 查询重写（Query Rewriting）技术**
+
+查询重写是解决上述问题的核心方法，其目标是将用户的原始问题转换为更适合检索的形式。常见技术包括：
+
+| **技术**         | **原理**                                    | **示例**                                                            |
+|:-----------------|:--------------------------------------------|:--------------------------------------------------------------------|
+| **同义词扩展**   | 用同义词词典扩展查询词                      | "挂科" → "不及格/未通过/考核不合格"                     |
+| **HyDE**         | 让 LLM 先写假答案，再用假答案检索           | 问题 → LLM生成假设答案 → embedding检索      |
+| **子查询分解**   | 将复杂问题拆分为多个子问题                  | "转专业后学分怎么算" → \["转专业流程", "学分认定规则"\] |
+| **反向问题生成** | 为文档片段生成可能的问题，建立问题-答案映射 | 文档 → 生成Q → 用Q的embedding索引           |
+
+**3. HyDE（Hypothetical Document Embeddings）详解**
+
+HyDE 是一种有效的查询重写方法，流程如下：
+
+1.  用户输入原始问题 $Q$
+
+2.  使用 LLM 生成一个"假设答案" $D_{hyp}$（不保证正确，但包含相关关键词和语义）
+
+3.  对 $D_{hyp}$ 生成 embedding，而非对 $Q$ 生成 embedding
+
+4.  用 $D_{hyp}$ 的 embedding 去检索知识库中的真实文档
+
+**优势：**假设答案的语义空间与真实答案更接近，能缓解"问题-答案不对称"问题。
+
+**局限：**增加了 LLM 调用次数和延迟，假设答案质量依赖模型能力。
+
+**4. 改进方案总结**
+
+- **短期：**引入同义词扩展和简单的查询扩展（如用 LLM 生成 3-5 个改写版本分别检索，取并集）。
+
+- **中期：**实现 HyDE，用假设答案的 embedding 替代原始问题 embedding。
+
+- **长期：**训练领域特定的查询-文档对齐模型，或采用多向量检索（如 ColBERT 的 late interaction）。
+
+### 思考题三：Rerank 模型的原理与价值
+
+**问题：**embedding 检索通常用于粗筛，但结果中可能包含噪声。我们通常使用 rerank 技术来进行重排序。如果让 LLM 来判断哪段文本更相关，它本质上在做什么？请你查阅资料，思考 rerank 模型的原理，为什么它的效果更好？为什么要结合 embedding 和 rerank 两种策略？
+
+**解答：**
+
+**1. LLM 判断相关性的本质**
+
+当让 LLM 判断文本片段与用户问题的相关性时，它本质上在执行一个**二分类/排序任务**：
+
+- **语义理解：**LLM 利用其预训练获得的深层语义理解能力，不仅匹配关键词，还能理解隐含意图、上下文关联和逻辑推理关系。
+
+- **细粒度交互：**与 embedding 的"单向编码"不同，LLM 可以将问题文本和候选文本**同时输入**，进行双向注意力交互（cross-attention），捕捉细粒度的语义对齐关系。
+
+- **推理判断：**LLM 不仅判断"是否相关"，还能评估"相关程度"，甚至可以识别出"部分相关但包含误导信息"的片段。
+
+**2. Rerank 模型的原理**
+
+专业的 Rerank 模型（如 BGE-Reranker、Cohere Rerank、Jina Reranker）本质上是**基于交叉编码器（Cross-Encoder）的排序模型**：
+
+```text
+[CLS] 用户问题 [SEP] 候选文档 [SEP]
+                  ↓
+      Transformer Cross-Encoder
+      （问题与文档进行双向注意力交互）
+                  ↓
+          [CLS] 表示 → MLP
+                  ↓
+              相关性分数
+```
+
+> Cross-Encoder 在联合编码阶段直接建模问题与候选文档之间的细粒度交互。
+
+与 Bi-Encoder（embedding 模型）的区别：
+
+| **特性**       | **Bi-Encoder（Embedding）**  | **Cross-Encoder（Rerank）**  |
+|:---------------|:-----------------------------|:-----------------------------|
+| **编码方式**   | 问题和文档分别独立编码       | 问题和文档拼接后联合编码     |
+| **交互时机**   | 编码后才计算相似度（无交互） | 编码过程中进行双向注意力交互 |
+| **计算复杂度** | 低，可预计算文档向量         | 高，每次查询需重新编码       |
+| **语义精度**   | 中等，捕获粗粒度语义         | 高，捕获细粒度语义对齐       |
+| **适用阶段**   | 粗筛（召回）                 | 精排（重排序）               |
+
+**3. 为什么 Rerank 效果更好？**
+
+1.  **细粒度语义对齐：**Cross-Encoder 允许问题和文档在 token 级别进行注意力交互，能捕捉到"同义替换""指代消解""隐含条件"等 Bi-Encoder 无法识别的关系。
+
+2.  **上下文感知：**Rerank 模型可以看到完整的 query 和完整的 document，而 embedding 模型只能看到各自的压缩表示（通常 768/1024/1536 维），信息损失更大。
+
+3.  **负样本学习：**Rerank 模型在训练时使用了大量"看起来相关但实际不相关"的困难负样本，学会了区分"表面相似"和"真正相关"。
+
+4.  **动态适应：**Rerank 针对每个 query-document 对重新计算，不受预计算向量空间分布的限制。
+
+**4. 为什么要结合 Embedding + Rerank？**
+
+两种策略的结合体现了**"召回-精排"的经典两阶段检索范式**：
+
+```text
+用户问题
+   ↓
+Embedding 召回：从全量知识库快速筛选 Top-100
+   ↓
+Rerank 精排：对候选片段重新评分并选出 Top-5
+   ↓
+构造上下文并交给大模型生成答案
+```
+
+> 两阶段检索由 Embedding 保证召回范围，再由 Rerank 提升最终上下文的精确度。
+
+**结合的原因：**
+
+- **效率与精度的平衡：**
+
+  - Embedding 检索：$O(1)$ 近似最近邻搜索（使用 FAISS/Annoy），毫秒级响应，适合从百万级文档中快速召回候选。
+
+  - Rerank：$O(n)$ 逐对编码，计算成本高，但候选集已缩小到几十到几百条，开销可接受。
+
+- **互补性：**
+
+  - Embedding 负责"不漏"：确保相关文档进入候选池（高召回率）。
+
+  - Rerank 负责"不杂"：从候选池中剔除噪声，选出真正最相关的（高精确率）。
+
+- **工程可行性：**
+
+  - 纯 Rerank：对全量文档逐对计算，$N \times M$ 复杂度不可行。
+
+  - 纯 Embedding：精度上限受限于向量压缩和独立编码的假设。
+
+  - 两阶段：既保证了可扩展性，又提升了最终质量。
+
+**5. 本实验中的 Rerank 实现**
+
+在本实验中，我们使用 LLM（而非专业 Rerank 模型）进行重排序，其原理与 Cross-Encoder 类似：将问题和多个候选片段同时输入 LLM，利用其深层语义理解能力评估相关性。虽然计算成本高于专用 Rerank 模型，但无需额外部署，且利用了 LLM 强大的零样本推理能力，是一种实用的折中方案。
