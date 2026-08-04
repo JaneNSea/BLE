@@ -1,0 +1,610 @@
+---
+title: "数据库实验一：openGauss 部署与学籍管理系统"
+summary: "记录在华为云 ECS 与 VMware openEuler 环境中部署 openGauss 5.0.1，并完成学籍与成绩管理系统的数据库、数据表、参照关系和索引设计。"
+publishedAt: 2026-04-27
+publishedLabel: "2026 年 4 月"
+tags: ["openGauss", "openEuler", "华为云 ECS", "VMware", "SQL", "数据库设计"]
+listingTags: ["数据库"]
+cover: "/images/notes/opengauss_exp1/opengauss_exp1.png"
+coverPosition: "50% 50%"
+authors:
+  - name: "JaneNSea"
+    role: "作者"
+    avatar: "/avatar.jpg"
+featured: false
+priority: 0
+draft: false
+readingMinutes: 18
+relatedProjects: []
+---
+
+import { withBase } from '../../utils/url';
+
+## 实验任务
+- 购买ECS服务器，安装Gauss数据库
+- 使用虚拟机安装openEuler操作系统并完成连接（我用的VMvare）
+- 创建数据库与数据表
+- 设计并建立“学籍与成绩管理系统”相关表格
+- 建立表与表之间的参照关系
+- 创建合适的索引，并在实验三中说明建立索引的原因
+
+## 学籍与成绩管理系统需求：
+- 课程：课程名称、课程代号、课程类型（必修、选修、任选）、学分
+- 教师：教师编号、教师姓名、教师职称、所属学院名称、学院代号
+- 学生：学生学号、学生姓名、所属学院名称、学院代号
+- 业务关联：教师授课信息、学生选课信息、课程考试成绩
+
+## 实验目的：
+- 熟悉openEuler操作系统和openGauss数据库
+- 能够掌握基本sql语句的编写，学会数据库的创建和数据库表的创建
+- 熟悉openGauss的配置与基本操作，能够使用一些远程连接工具完成实验
+## 实验过程
+
+## 实验环境与软件
+
+| 项目 | 云服务器 | 虚拟机 |
+|---|---|---|
+| 服务商 | 华为云 | Vmware |
+| 操作系统 | openEuler20.03 | openEuler22.03 |
+| CPU/内存 | 2核4G | 2核2G |
+| 磁盘 | 40GB | 10GB |
+| Python 版本 | Python 3.7.9 | Python 3.7.9 |
+| openGauss 版本 | openGauss 5.0.1 | openGauss 5.0.1 |
+| 远程工具 | FinalShell / DataGrip | GitBash |
+| 数据库端口 | 26000 | 26000 |
+
+## openGauss 数据库部署（云服务器ECS）
+
+### 购买华为云服务器
+
+登录华为云官网，进入 ECS 控制台，选择合适的地域与可用区，配置实例规格（如 2核4G），选择公共镜像（openEuler），设置系统盘（至少 40GB），配置安全组（先放行 SSH 22 端口，后续还要放行其他端口），设置 root 密码，完成购买。
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp1/1.png')} alt="华为云 ECS 购买页面，显示实例规格、镜像、磁盘等配置信息" />
+  <figcaption>华为云 ECS 购买页面，显示实例规格、镜像、磁盘等配置信息</figcaption>
+</figure>
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp1/2.png')} alt="华为云 ECS 实例列表，显示已创建的实例及其公网 IP" />
+  <figcaption>华为云 ECS 实例列表，显示已创建的实例及其公网 IP</figcaption>
+</figure>
+
+### 远程连接华为云服务器
+
+购买完成后，在实例详情页获取公网 IP 地址。使用 FinalShell（或者windows自带的ssh工具）新建 SSH 连接，主机填写公网 IP，端口 22，用户名 root，认证方式选择密码并输入 root 密码，连接成功后进入服务器终端。
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp1/3.png')} alt="FinalShell 远程连接成功，显示 Linux 终端" />
+  <figcaption>FinalShell 远程连接成功，显示 Linux 终端</figcaption>
+</figure>
+
+### 配置字符集
+
+openGauss 要求系统字符集为 UTF-8。登录服务器后，先查看当前字符集配置：
+
+```bash
+echo $LANG
+locale
+```
+
+若未配置为 UTF-8，需修改 `/etc/locale.conf`：
+
+```bash
+cat >>/etc/profile<<EOF
+export LANG=en_US.UTF‐8
+EOF
+```
+
+使配置生效：
+
+```bash
+source /etc/profile
+```
+
+同时确保系统已安装 UTF-8 语言包：
+
+```bash
+yum install -y glibc-locale-source
+localedef -c -f UTF-8 -i en_US en_US.UTF-8
+```
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp1/4.png')} alt="终端执行对应指令" />
+  <figcaption>终端执行对应指令</figcaption>
+</figure>
+
+### 修改 Python 版本并安装libaio包
+
+openGauss 安装脚本依赖特定 Python 版本（通常为 Python 3.7.9）。检查当前 Python 版本：
+
+```bash
+python3 --version
+```
+
+若版本不符，需切换 Python 版本。以 Python 3.7.9 为例：
+
+```bash
+# 备份py文件
+mv python python.bak
+
+# 创建软链接
+ ln -s python3 /usr/bin/python
+
+# 验证py版本
+python -V
+#输出为Python 3.7.9则切换成功
+
+#下载libaio包，数据库依赖相关
+yum install libaio* -y
+```
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp1/5.png')} alt="python -V输出为Python 3.7.9" />
+  <figcaption>python -V输出为Python 3.7.9</figcaption>
+</figure>
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp1/6.png')} alt="下载libaio包成功" />
+  <figcaption>下载libaio包成功</figcaption>
+</figure>
+### 下载配置与依赖
+
+创建 openGauss 安装目录，下载安装包及依赖：
+
+```bash
+mkdir -p /opt/software/openGauss
+chmod 755 -R /opt/software
+cd /opt/software/openGauss
+
+# 下载 openGauss 安装包（以实际版本为准）
+wget https://opengauss.obs.cn-south-1.myhuaweicloud.com/5.0.1/arm/openGauss-5.0.1-openEuler-64bit-all.tar.gz
+```
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp1/7.png')} alt="正在下载gauss" />
+  <figcaption>正在下载gauss</figcaption>
+</figure>
+
+### 创建 XML 配置文件
+
+openGauss 使用 XML 文件定义集群拓扑。创建 `clusterconfig.xml`：
+
+```bash
+vi /opt/software/openGauss/clusterconfig.xml
+```
+
+单机节点配置示例：
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?> 
+<ROOT> 
+    <CLUSTER> 
+        <PARAM name="clusterName" value="dbCluster" /> 
+        <PARAM name="nodeNames" value="ecs-d3cb" /> 
+        <PARAM name="backIp1s" value="192.168.0.189"/> 
+        <PARAM name="gaussdbAppPath" value="/opt/gaussdb/app" /> 
+        <PARAM name="gaussdbLogPath" value="/var/log/gaussdb" /> 
+        <PARAM name="gaussdbToolPath" value="/opt/huawei/wisequery" /> 
+        <PARAM name="corePath" value="/opt/opengauss/corefile"/> 
+        <PARAM name="clusterType" value="single-inst"/> 
+    </CLUSTER> 
+   
+    <DEVICELIST> 
+        
+        <DEVICE sn="1000001"> 
+            <PARAM name="name" value="ecs-d3cb"/> 
+            <PARAM name="azName" value="AZ1"/> 
+            <PARAM name="azPriority" value="1"/> 
+            <PARAM name="backIp1" value="192.168.0.189"/> 
+            <PARAM name="sshIp1" value="192.168.0.189"/> 
+             
+	    <!--dbnode--> 
+	    <PARAM name="dataNum" value="1"/> 
+	    <PARAM name="dataPortBase" value="26000"/> 
+	    <PARAM name="dataNode1" value="/gaussdb/data/db1"/> 
+        </DEVICE> 
+    </DEVICELIST> 
+</ROOT>
+```
+
+其中 `backIp1` 填写服务器内网 IP。
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp1/8.png')} alt="编辑xml" />
+  <figcaption>编辑xml</figcaption>
+</figure>
+
+### 创建 omm 账号并授权
+
+创建数据库运行用户 `omm`，并设置目录权限：
+
+```bash
+# 创建用户组和用户
+groupadd dbgrp
+useradd -g dbgrp -d /home/omm -m -s /bin/bash omm
+
+# 设置密码
+passwd omm
+
+# 授权安装目录
+chown -R omm:dbgrp /opt/software/openGauss
+chmod -R 755 /opt/software/openGauss
+
+# 创建数据目录并授权
+mkdir -p /opt/gaussdb/data/dn
+chown -R omm:dbgrp /opt/gaussdb
+```
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp1/9.png')} alt="终端执行 useradd、chown 等命令，显示 omm 创建成功" />
+  <figcaption>终端执行 useradd、chown 等命令，显示 omm 创建成功</figcaption>
+</figure>
+
+### 为 omm 部署 openGauss
+
+切换到 `omm` 用户，执行预安装和正式安装：
+
+```bash
+su - omm
+
+# 预安装（检查环境）
+cd /opt/software/openGauss/script
+./gs_preinstall -U omm -G dbgrp -X /opt/software/openGauss/clusterconfig.xml
+
+# 正式安装
+./gs_install -X /opt/software/openGauss/clusterconfig.xml
+```
+
+安装过程中需设置数据库管理员密码。安装成功后，会提示 `Successfully installed`。
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp1/10.png')} alt="终端显示 gs_install 安装成功的提示信息" />
+  <figcaption>终端显示 gs_install 安装成功的提示信息</figcaption>
+</figure>
+
+### 验证数据库运行状态
+
+安装完成后，使用 `gs_om` 检查集群状态：
+
+```bash
+gs_om -t status
+```
+
+正常应显示所有节点状态为 `Normal`，数据库实例状态为 `Primary`。
+
+```bash
+# 查看详细状态
+gs_om -t status --detail
+
+# 登录数据库验证
+gsql -d postgres -p 26000
+# 在 gsql 中执行
+\l
+\q
+```
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp1/11.png')} alt="终端执行 gs_om -t status，显示状态 Normal" />
+  <figcaption>终端执行 gs_om -t status，显示状态 Normal</figcaption>
+</figure>
+
+### 关闭防火墙并开放端口
+
+为确保远程连接畅通，关闭系统防火墙（或放行 26000 端口）：
+
+```bash
+# 关闭防火墙（测试环境）
+systemctl stop firewalld
+systemctl disable firewalld
+
+# 或放行 26000 端口
+firewall-cmd --zone=public --add-port=26000/tcp --permanent
+firewall-cmd --reload
+```
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp1/12.png')} alt="终端执行 systemctl stop firewalld，显示防火墙已关闭" />
+  <figcaption>终端执行 systemctl stop firewalld，显示防火墙已关闭</figcaption>
+</figure>
+
+### 远程连接配置
+
+#### 修改 postgresql.conf
+
+```bash
+#如果找不到这个文件在哪，用find / -name "xxx"
+vi /gaussdb/data/db1/postgresql.conf
+```
+
+修改以下参数：
+
+```bash
+# 允许所有地址连接
+listen_addresses = '*'
+
+# 密码加密方式（0 表示兼容 MD5，便于远程工具DataGrip连接）
+password_encryption_type = 0
+```
+
+#### 修改 pg_hba.conf
+
+```bash
+vi /gaussdb/data/db1/pg_hba.conf
+```
+
+在文件末尾添加：
+
+```bash
+# TYPE  DATABASE    USER    ADDRESS       METHOD
+host    all         all     0.0.0.0/0     md5
+```
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp1/15.png')} alt="改完后对创建的用户重新设置密码" />
+  <figcaption>改完后对创建的用户重新设置密码</figcaption>
+</figure>
+#### 重启数据库使配置生效
+
+```bash
+gs_om -t stop
+gs_om -t start
+```
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp1/14.png')} alt="DataGrip测试连接成功" />
+  <figcaption>DataGrip测试连接成功</figcaption>
+</figure>
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp1/13.png')} alt="DataGrip成功能看到数据库" />
+  <figcaption>DataGrip成功能看到数据库</figcaption>
+</figure>
+
+### 创建用户并授权
+
+以 `omm` 用户登录数据库，创建业务用户并授权：
+
+```bash
+gsql -d postgres -p 26000
+
+-- 创建用户
+CREATE USER joe WITH PASSWORD 'YourPassword123' CREATEDB;
+
+-- 创建数据库
+CREATE DATABASE school_management OWNER joe;
+
+-- 连接新数据库
+\c school_management
+
+-- 授权 public schema
+GRANT USAGE, CREATE ON SCHEMA public TO joe;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO joe;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO joe;
+#最简单的开放权限的方法
+alter user joe with sysadmin
+```
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp1/19.png')} alt="开放权限" />
+  <figcaption>开放权限</figcaption>
+</figure>
+
+### 创建数据库表
+
+在 `school_management` 数据库中创建学籍与成绩管理系统的 6 张表：
+
+```sql
+-- ============================================
+-- 1. 学院表 (xyb) - 先创建，因为被其他表引用
+-- ============================================
+CREATE TABLE xyb (
+    ydh  CHAR(2)  NOT NULL,  -- 学院代号
+    ymc  VARCHAR(30) NOT NULL,  -- 学院名称
+    CONSTRAINT pk_xyb PRIMARY KEY (ydh)
+);
+
+COMMENT ON TABLE xyb IS '学院表';
+COMMENT ON COLUMN xyb.ydh IS '学院代号';
+COMMENT ON COLUMN xyb.ymc IS '学院名称';
+
+-- ============================================
+-- 2. 学生表 (xs)
+-- ============================================
+CREATE TABLE xs (
+    xm   VARCHAR(8)  NOT NULL,  -- 姓名
+    xh   CHAR(10)    NOT NULL,  -- 学号
+    ydh  CHAR(2),                 -- 所属学院代号 (FK -> xyb)
+    bj   VARCHAR(8),              -- 班级
+    chrq DATE,                    -- 出生日期
+    xb   CHAR(2),                 -- 性别
+    CONSTRAINT pk_xs PRIMARY KEY (xh),
+    CONSTRAINT fk_xs_xyb FOREIGN KEY (ydh) REFERENCES xyb(ydh)
+);
+
+COMMENT ON TABLE xs IS '学生表';
+COMMENT ON COLUMN xs.xm IS '姓名';
+COMMENT ON COLUMN xs.xh IS '学号';
+COMMENT ON COLUMN xs.ydh IS '所属学院代号';
+COMMENT ON COLUMN xs.bj IS '班级';
+COMMENT ON COLUMN xs.chrq IS '出生日期';
+COMMENT ON COLUMN xs.xb IS '性别';
+
+-- ============================================
+-- 3. 课程表 (kc)
+-- ============================================
+CREATE TABLE kc (
+    kcbh CHAR(3)     NOT NULL,  -- 课程编号
+    kc   VARCHAR(20) NOT NULL,  -- 课程名称
+    lx   VARCHAR(10),             -- 课程类型（必修、选修、任选）
+    xf   NUMERIC(4,1),            -- 学分（总长5位含小数点，小数1位 → PostgreSQL用NUMERIC(4,1)，即整数3位+小数1位）
+    CONSTRAINT pk_kc PRIMARY KEY (kcbh)
+);
+
+COMMENT ON TABLE kc IS '课程表';
+COMMENT ON COLUMN kc.kcbh IS '课程编号';
+COMMENT ON COLUMN kc.kc IS '课程名称';
+COMMENT ON COLUMN kc.lx IS '课程类型';
+COMMENT ON COLUMN kc.xf IS '学分';
+
+-- ============================================
+-- 4. 教师表 (js)
+-- ============================================
+CREATE TABLE js (
+    xm   VARCHAR(8)  NOT NULL,  -- 姓名
+    jsbh CHAR(10)    NOT NULL,  -- 教师编号
+    zc   VARCHAR(6),              -- 职称
+    ydh  CHAR(2),                 -- 所属学院代号 (FK -> xyb)
+    CONSTRAINT pk_js PRIMARY KEY (jsbh),
+    CONSTRAINT fk_js_xyb FOREIGN KEY (ydh) REFERENCES xyb(ydh)
+);
+
+COMMENT ON TABLE js IS '教师表';
+COMMENT ON COLUMN js.xm IS '姓名';
+COMMENT ON COLUMN js.jsbh IS '教师编号';
+COMMENT ON COLUMN js.zc IS '职称';
+COMMENT ON COLUMN js.ydh IS '所属学院代号';
+
+-- ============================================
+-- 5. 授课表 (sk) - 关联课程与教师
+-- ============================================
+CREATE TABLE sk (
+    kcbh CHAR(3)  NOT NULL,  -- 课程编号 (FK -> kc)
+    bh   CHAR(10) NOT NULL,  -- 教师编号 (FK -> js)
+    CONSTRAINT pk_sk PRIMARY KEY (kcbh, bh),
+    CONSTRAINT fk_sk_kc FOREIGN KEY (kcbh) REFERENCES kc(kcbh),
+    CONSTRAINT fk_sk_js FOREIGN KEY (bh) REFERENCES js(jsbh)
+);
+
+COMMENT ON TABLE sk IS '授课表';
+COMMENT ON COLUMN sk.kcbh IS '课程编号';
+COMMENT ON COLUMN sk.bh IS '教师编号';
+
+-- ============================================
+-- 6. 学生选课表 (xk) - 关联学生、课程、教师、成绩
+-- ============================================
+CREATE TABLE xk (
+    xh   CHAR(10) NOT NULL,  -- 学号 (FK -> xs)
+    kcbh CHAR(3)  NOT NULL,  -- 课程编号 (FK -> kc)
+    jsbh CHAR(10) NOT NULL,  -- 教师编号 (FK -> js)
+    cj   NUMERIC(4,1),        -- 成绩
+    CONSTRAINT pk_xk PRIMARY KEY (xh, kcbh, jsbh),
+    CONSTRAINT fk_xk_xs FOREIGN KEY (xh) REFERENCES xs(xh),
+    CONSTRAINT fk_xk_kc FOREIGN KEY (kcbh) REFERENCES kc(kcbh),
+    CONSTRAINT fk_xk_js FOREIGN KEY (jsbh) REFERENCES js(jsbh)
+);
+
+COMMENT ON TABLE xk IS '学生选课表';
+COMMENT ON COLUMN xk.xh IS '学号';
+COMMENT ON COLUMN xk.kcbh IS '课程编号';
+COMMENT ON COLUMN xk.jsbh IS '教师编号';
+COMMENT ON COLUMN xk.cj IS '成绩';
+
+-- ============================================
+-- 索引创建（提高查询效率）
+-- ============================================
+
+-- 学生表：按学院查询频繁，为外键 ydh 建立索引
+CREATE INDEX idx_xs_ydh ON xs(ydh);
+
+-- 教师表：按学院查询频繁，为外键 ydh 建立索引
+CREATE INDEX idx_js_ydh ON js(ydh);
+
+-- 授课表：两个外键分别建立索引，便于按课程或教师查询
+CREATE INDEX idx_sk_kcbh ON sk(kcbh);
+CREATE INDEX idx_sk_bh ON sk(bh);
+
+-- 学生选课表：为各外键建立索引，便于关联查询和统计
+CREATE INDEX idx_xk_xh ON xk(xh);
+CREATE INDEX idx_xk_kcbh ON xk(kcbh);
+CREATE INDEX idx_xk_jsbh ON xk(jsbh);
+
+-- 成绩查询频繁，为成绩字段建立索引（用于成绩统计、排名等）
+CREATE INDEX idx_xk_cj ON xk(cj);
+```
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp1/17.png')} alt="建表成功" />
+  <figcaption>建表成功</figcaption>
+</figure>
+
+### 查看 ER 图
+
+在 DataGrip 中，右键点击数据库 `school_management`，选择 `Diagrams` → `Show Visualization`，即可生成 ER 图，直观展示表与表之间的主外键关系。
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp1/18.png')} alt="DataGrip 生成的 ER 图，显示六张关联关系" />
+  <figcaption>DataGrip 生成的 ER 图，显示六张关联关系</figcaption>
+</figure>
+
+## openGauss 数据库部署（虚拟机）
+
+### 下载VMware并在VMware里面创建虚拟机
+
+创建虚拟机时选择"稍后安装操作系统"，在新建虚拟机向导中，不要直接选择"安装程序光盘映像文件(iso)"让 VMware 自动检测，而是选择 "稍后安装操作系统" 。
+
+手动指定操作系统类型，选择客户机操作系统时：
+操作系统：Linux，版本选择：openEuler 22.03 LTS 选 "centOS7 64位" 。
+
+创建完成后再挂载 ISO：
+虚拟机创建完成后，点击"编辑虚拟机设置" → "CD/DVD" → 勾选 "使用 ISO 映像文件" 并浏览选择你的 openEuler ISO 文件，同时确保勾选 "启动时连接" 。
+
+进入安装界面后选install openeuler 22.03-LTS
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp1/20.png')} alt="虚拟机创建成功，正在安装操作系统" />
+  <figcaption>虚拟机创建成功，正在安装操作系统</figcaption>
+</figure>
+
+### 进入图形化安装界面
+按照要求完成配置并进行安装，安装完成之后重启系统就可以进入系统的主界面了。
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp1/21.png')} alt="安装前配置" />
+  <figcaption>安装前配置</figcaption>
+</figure>
+
+### 远程连接虚拟机
+我采用了gitbash去连接，因为使用finalshell和powershell都因为加密方式不同的问题而连接不上，但是gitbash刚好可以避开这个问题。
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp1/22.png')} alt="gitbash成功连接上虚拟机" />
+  <figcaption>gitbash成功连接上虚拟机</figcaption>
+</figure>
+
+### 直接使用ova镜像下载并连接好虚拟机
+这个步骤由于使用vmware与virtualbox有一定区别，所以网卡要重新配置。
+
+```bash
+# 删除旧的网卡配置文件（设备名变了，旧配置已经失效）
+rm -f /etc/sysconfig/network-scripts/ifcfg-ens*
+# 重启网络服务，让系统自动生成新配置
+systemctl restart NetworkManager
+# 强制让新网卡获取IP
+nmcli connection add type ethernet con-name ens33 ifname ens33 autoconnect yes ipv4.method auto
+nmcli connection up ens33
+#这一步是改掉监听端口，不然用远程连接工具没法后续启动高斯数据库
+vi /gaussdb/data/db1/postgresql.conf
+#进去将原本的配置改掉
+listen_addresses = '0.0.0.0'
+```
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp1/24.png')} alt="第二种方法配置成功" />
+  <figcaption>第二种方法配置成功</figcaption>
+</figure>
+
+### 启动gauss数据库
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp1/25.png')} alt="启动成功" />
+  <figcaption>启动成功</figcaption>
+</figure>
+### 其余操作
+其余操作与第二步的ECS配置基本一致，就不在继续演示。
+## 实验结论
+本次实验顺利完成了数据库建立的全部任务，达到了预期实验目标。通过购买ECS服务器并安装Gauss数据库，成功搭建了数据库运行环境；借助Vmware虚拟机完成openEuler系统的部署与连接。基于学籍与成绩管理系统的需求，梳理了课程、教师、学生及成绩相关的全部信息，完成了数据库、数据表的创建，合理设置了各表之间的参照关系，确保了数据的完整性与关联性；同时按需规划了索引的建立位置，为后续索引设置及实验三的奠定了基础。
+
+实验过程中，明确了数据库建立的核心流程，掌握了Gauss数据库的安装方法、openEuler虚拟机的部署与连接技巧，掌握了运用SQL语句完成数据表创建、参照关系设置等操作。通过整理系统所需信息并以表格形式呈现，清晰梳理了各数据项的类别与关联，为后续系统开发与数据管理提供了清晰的结构支撑，验证了数据库设计在实际系统中的应用价值。
+
+## 实验体会
+通过本次建立数据库实验，我不仅掌握了数据库建立的基础操作，更深刻体会到了数据库设计的严谨性与重要性。在实验初期，购买ECS服务器、安装Gauss数据库及部署openEuler虚拟机的过程中，遇到了虚拟机连接失败、数据库安装依赖缺失等问题，通过查阅资料、排查配置，最终成功解决问题，这让我意识到实操过程中细节的重要性，也提升了我的问题排查与解决能力。
+
+在梳理学籍与成绩管理系统信息、创建数据表及设置参照关系时，我深刻认识到数据分类与关联设计的关键意义——合理的信息分类的能够提升数据管理效率，清晰的参照关系能够保障数据的一致性，避免数据冗余与错误。同时，在规划索引建立时，我提前思考了索引的作用与适用场景，理解了索引对查询效率的优化原理，为后续深入学习数据库优化奠定了基础。
+
+这次实验也让我充分明白了文档的重要性，不能过度依赖ai去完成操作，要多使用文档查阅去完成配置等工作，当然由于文档时效性的问题，部分内容已经不一定和现在的一样，所以在配置过程中出现问题要多去社区查阅资料，因为有些内容已经更新。
