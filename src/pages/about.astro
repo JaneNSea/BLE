@@ -7,39 +7,66 @@ import { withBase } from '../utils/url';
 const principles = (await getCollection('principles'))
   .filter((entry) => !entry.data.draft)
   .sort((a, b) => a.data.order - b.data.order);
+
+const heroImage = '/images/about/engineering-desk-hero.png';
+const directionTags = ['安全底座', '平台野心', '国产生态', 'AI 时代'];
 ---
 
 <BaseLayout title={`关于 ${site.name}`} description={site.description}>
-  <header class="about-hero shell">
-    <div>
+  <header class="about-hero">
+    <img
+      class="about-hero__image"
+      src={withBase(heroImage)}
+      alt="铺着架构草图、硬件模块和开发设备的工程工作台"
+      width="1728"
+      height="896"
+    />
+    <div class="about-hero__shade" aria-hidden="true"></div>
+    <div class="about-hero__inner shell">
       <p class="eyebrow">About / Profile</p>
       <h1 class="page-title">技术是手段，<br />价值与可信才是方向。</h1>
-      <p class="lede">{site.description}</p>
+      <p class="lede">
+        我关心的不是把技术堆得多满，而是它是否能承载真实价值、守住安全边界，并最终沉淀为可扩展的平台能力。
+      </p>
+      <ul class="hero-tags" aria-label="核心方向">
+        {directionTags.map((tag) => <li>{tag}</li>)}
+      </ul>
     </div>
-    <img src={withBase(site.avatar)} alt={`${site.name} 的头像`} width="360" height="360" />
   </header>
 
-  <section class="page-section shell about-grid">
-    <div>
+  <section class="page-section shell about-profile">
+    <div class="profile-copy">
       <p class="eyebrow">Profile</p>
       <h2>个人简介</h2>
+      <p class="profile-lede">我是 JaneNSea，一名关注安全可信、平台化产品和国产技术生态的独立开发者与产品工程师。</p>
+      <p>我习惯从真实需求和约束出发，把模糊想法拆成可以验证、可以交付、可以持续演进的系统。做项目时，我会先问它是否安全可信，再看它是否具备平台化增长空间，最后才决定具体技术路线。</p>
+      <p>我正在主动拥抱 HarmonyOS、OpenHarmony、仓颉与国产基础软件生态，也在用 AI 改造自己的开发、研究、验证和协作方式。AI 对我来说不只是提效工具，更是重新组织工作流的入口。</p>
     </div>
-    <div class="about-copy">
-      <p>我是 JaneNSea，一名关注产品价值、安全边界与平台能力的独立开发者和产品工程师。</p>
-      <p>我习惯从真实需求和约束出发，把模糊问题拆成可以验证、可以交付、可以持续演进的系统。技术选择上，我主动拥抱 HarmonyOS、OpenHarmony、仓颉与国产基础软件生态，关注自主可控与信创实践。</p>
-      <p>面对 AI 带来的开发方式变化，我更看重人与 AI 的职责边界、结果验证和工程可维护性：让 AI 提高探索与交付效率，同时让关键判断、安全责任和系统质量始终可追踪。</p>
+
+    <aside class="identity-panel" aria-label="身份信息">
+      <div class="identity-head">
+        <img src={withBase(site.avatar)} alt={`${site.name} 的头像`} width="128" height="128" />
+        <div>
+          <p>{site.name}</p>
+          <span>{site.role}</span>
+        </div>
+      </div>
+      <p class="identity-status">{site.status}</p>
       <dl>
         <div><dt>Role</dt><dd>{site.role}</dd></div>
         <div><dt>Location</dt><dd>{site.location}</dd></div>
         <div><dt>Focus</dt><dd>{site.capabilities.join(' · ')}</dd></div>
       </dl>
-    </div>
+    </aside>
   </section>
 
-  <section class="page-section shell">
-    <p class="eyebrow">Design principles</p>
-    <h2 class="principles-title">我如何做技术与产品判断</h2>
-    <div class="principle-list">
+  <section class="page-section shell judgment-section">
+    <div class="judgment-intro">
+      <p class="eyebrow">Product judgment</p>
+      <h2>我如何做技术与产品判断</h2>
+      <p>项目不是功能清单，技术也不是炫技素材。真正值得投入的方向，应该能在安全、规模、生态和时代变化中同时站住。</p>
+    </div>
+    <div class="principle-list" aria-label="技术与产品判断原则">
       {principles.map((principle) => (
         <article>
           <span>{String(principle.data.order).padStart(2, '0')}</span>
@@ -56,25 +83,82 @@ const principles = (await getCollection('principles'))
 
 <style>
   .about-hero {
-    display: grid;
-    grid-template-columns: 1fr minmax(16rem, 24rem);
-    gap: var(--space-8);
-    align-items: end;
-    padding-block: var(--space-9) var(--space-8);
+    position: relative;
+    min-height: min(42rem, calc(100vh - 5rem));
+    overflow: hidden;
+    isolation: isolate;
+    border-bottom: 1px solid var(--color-border);
   }
 
-  .about-hero img {
-    aspect-ratio: 1;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
+  .about-hero__image,
+  .about-hero__shade {
+    position: absolute;
+    inset: 0;
+  }
+
+  .about-hero__image {
+    z-index: -2;
+    width: 100%;
+    height: 100%;
     object-fit: cover;
-    box-shadow: var(--shadow-card);
+    object-position: 62% 48%;
   }
 
-  .about-grid {
+  .about-hero__shade {
+    z-index: -1;
+    background:
+      linear-gradient(90deg, rgba(28, 22, 16, 0.7) 0%, rgba(40, 30, 20, 0.5) 36%, rgba(64, 43, 22, 0.08) 72%),
+      linear-gradient(0deg, rgba(243, 236, 223, 0.3), rgba(0, 0, 0, 0.08));
+  }
+
+  .about-hero__inner {
+    display: flex;
+    min-height: min(42rem, calc(100vh - 5rem));
+    flex-direction: column;
+    justify-content: center;
+    padding-block: var(--space-8);
+  }
+
+  .about-hero .eyebrow {
+    color: #f2d69b;
+  }
+
+  .about-hero .page-title {
+    max-width: 12ch;
+    color: #fff9ee;
+    text-shadow: 0 2px 22px rgba(0, 0, 0, 0.28);
+  }
+
+  .about-hero .lede {
+    max-width: 34rem;
+    color: rgba(255, 249, 238, 0.86);
+  }
+
+  .hero-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    max-width: 34rem;
+    margin: var(--space-6) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .hero-tags li {
+    padding: 0.28rem 0.6rem;
+    border: 1px solid rgba(255, 249, 238, 0.36);
+    border-radius: 0.45rem;
+    color: rgba(255, 249, 238, 0.9);
+    background: rgba(30, 23, 16, 0.22);
+    font-size: 0.72rem;
+    font-weight: 720;
+  }
+
+  .about-profile {
     display: grid;
-    grid-template-columns: 0.7fr 1.3fr;
+    grid-template-columns: minmax(0, 1.1fr) minmax(17rem, 0.9fr);
     gap: var(--space-8);
+    align-items: start;
   }
 
   h2 {
@@ -86,22 +170,72 @@ const principles = (await getCollection('principles'))
     line-height: 1.05;
   }
 
-  .about-copy {
+  .profile-copy {
     color: var(--color-text-soft);
     font-size: 1.08rem;
   }
 
-  .about-copy p:first-child {
+  .profile-lede {
     margin-top: 0;
     color: var(--color-text);
     font-size: 1.3rem;
   }
 
-  .about-copy dl {
-    margin-top: var(--space-7);
+  .identity-panel {
+    padding: var(--space-5);
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    background: rgba(255, 251, 243, 0.66);
+    box-shadow: var(--shadow-card);
   }
 
-  .about-copy dl div {
+  .identity-head {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--space-4);
+    align-items: center;
+  }
+
+  .identity-head img {
+    width: 6.25rem;
+    height: 6.25rem;
+    border: 1px solid var(--color-border);
+    border-radius: 50%;
+    object-fit: cover;
+    background: var(--color-bg-soft);
+  }
+
+  .identity-head p,
+  .identity-status {
+    margin: 0;
+  }
+
+  .identity-head p {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.1;
+  }
+
+  .identity-head span {
+    color: var(--color-text-soft);
+    font-size: 0.86rem;
+  }
+
+  .identity-status {
+    margin-top: var(--space-5);
+    padding-block: var(--space-4);
+    border-block: 1px solid var(--color-border);
+    color: var(--color-accent-strong);
+    font-size: 0.9rem;
+    font-weight: 680;
+  }
+
+  .identity-panel dl {
+    margin: var(--space-5) 0 0;
+  }
+
+  .identity-panel dl div {
     display: grid;
     grid-template-columns: 7rem 1fr;
     gap: var(--space-4);
@@ -109,27 +243,47 @@ const principles = (await getCollection('principles'))
     border-top: 1px solid var(--color-border);
   }
 
-  .about-copy dt {
+  .identity-panel dt {
     color: var(--color-text-faint);
     font-family: var(--font-mono);
     font-size: 0.72rem;
   }
 
-  .about-copy dd {
+  .identity-panel dd {
     margin: 0;
+    color: var(--color-text-soft);
   }
 
-  .principles-title {
-    max-width: 17ch;
-    margin-bottom: var(--space-7);
+  .judgment-section {
+    display: grid;
+    grid-template-columns: minmax(15rem, 0.55fr) minmax(0, 1.45fr);
+    gap: var(--space-8);
+    align-items: start;
+  }
+
+  .judgment-intro {
+    position: sticky;
+    top: 7rem;
+  }
+
+  .judgment-intro h2 {
+    max-width: 11ch;
+  }
+
+  .judgment-intro p:last-child {
+    color: var(--color-text-soft);
   }
 
   .principle-list article {
     display: grid;
-    grid-template-columns: 7rem 1fr;
+    grid-template-columns: 4rem 1fr;
     gap: var(--space-5);
     padding-block: var(--space-6);
     border-top: 1px solid var(--color-border);
+  }
+
+  .principle-list article:first-child {
+    border-top-color: var(--color-border-strong);
   }
 
   .principle-list article > span {
@@ -141,7 +295,7 @@ const principles = (await getCollection('principles'))
   .principle-list h3 {
     margin: 0;
     font-family: var(--font-display);
-    font-size: clamp(1.4rem, 3vw, 2.1rem);
+    font-size: clamp(1.55rem, 3vw, 2.25rem);
     letter-spacing: -0.035em;
   }
 
@@ -154,24 +308,41 @@ const principles = (await getCollection('principles'))
   .principle-list small {
     color: var(--color-text-faint);
     font-family: var(--font-mono);
+    font-size: 0.76rem;
   }
 
   @media (max-width: 760px) {
     .about-hero,
-    .about-grid {
+    .about-hero__inner {
+      min-height: 36rem;
+    }
+
+    .about-hero__image {
+      object-position: 70% 50%;
+    }
+
+    .about-hero__shade {
+      background:
+        linear-gradient(90deg, rgba(25, 20, 15, 0.76) 0%, rgba(42, 32, 22, 0.54) 62%, rgba(42, 32, 22, 0.24) 100%),
+        linear-gradient(0deg, rgba(243, 236, 223, 0.28), rgba(0, 0, 0, 0.08));
+    }
+
+    .about-profile,
+    .judgment-section {
       grid-template-columns: 1fr;
     }
 
-    .about-hero {
-      padding-block: var(--space-8);
+    .judgment-intro {
+      position: static;
     }
 
-    .about-hero img {
-      width: min(100%, 22rem);
+    .identity-panel dl div {
+      grid-template-columns: 5.5rem 1fr;
     }
 
     .principle-list article {
-      grid-template-columns: 3rem 1fr;
+      grid-template-columns: 2.4rem 1fr;
+      gap: var(--space-4);
     }
   }
 </style>
