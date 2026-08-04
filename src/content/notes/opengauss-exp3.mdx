@@ -1,0 +1,312 @@
+---
+title: "数据库实验三：数据库物理设计与权限管理"
+summary: "围绕量化交易业务完成 openGauss 数据库物理设计、范围分区与索引优化实验，并验证主外键约束、复杂更新删除、角色权限管理和 Schema 隔离机制。"
+publishedAt: 2026-08-04
+publishedLabel: "2026 年 8 月"
+tags: ["openGauss", "数据库物理设计", "分区表", "索引优化", "权限管理", "Schema"]
+listingTags: ["数据库"]
+cover: "/images/notes/opengauss_exp3/opengauss_exp3.png"
+coverPosition: "50% 50%"
+authors:
+  - name: "JaneNSea"
+    role: "作者"
+    avatar: "/avatar.jpg"
+featured: false
+priority: 0
+draft: false
+readingMinutes: 14
+relatedProjects: []
+---
+
+import { withBase } from '../../utils/url';
+
+
+## 实验目的
+
+- 掌握数据库物理设计的基本方法，能够根据业务需求创建主表与子表，并合理设置复合主键与外键约束。
+- 掌握数据分区表的创建方法，理解范围分区（Range Partition）在海量数据场景下的应用。
+- 体会并验证数据库索引对查询性能的提升，学会使用 `EXPLAIN` 查看与分析查询执行计划。
+- 熟练掌握针对主键、非主键属性以及包含子查询的复杂更新（UPDATE）与删除（DELETE）操作，深刻理解外键级联（CASCADE）与限制（RESTRICT）的作用。
+- 掌握 openGauss 数据库的角色权限管理机制，理解模式（Schema）隔离原理，能够以不同身份建立同名表并完成细粒度的授权验证。
+
+## 实验过程
+
+## 数据库物理设计与分区表创建
+
+### 量化交易系统核心表结构设计
+
+围绕量化交易业务场景，创建券商表、策略表（主表），以及资金账户表和交易流水表（子表）。其中交易流水表数据量极大，采用按交易日期进行范围分区。
+
+```sql
+-- 1. 创建主表：券商表与策略表
+CREATE TABLE quant_brokers (
+    broker_id INT PRIMARY KEY,
+    broker_name VARCHAR(50) NOT NULL,
+    api_rate_limit INT
+);
+
+CREATE TABLE quant_strategies (
+    strategy_id INT PRIMARY KEY,
+    strategy_name VARCHAR(50) NOT NULL,
+    author VARCHAR(50),
+    risk_level VARCHAR(20)
+);
+
+-- 2. 创建子表1：资金账户表（包含级联更新外键）
+CREATE TABLE quant_accounts (
+    account_id INT PRIMARY KEY,
+    broker_id INT,
+    account_type VARCHAR(20),
+    total_equity DECIMAL(15,2),
+    CONSTRAINT fk_account_broker FOREIGN KEY (broker_id) REFERENCES quant_brokers(broker_id)
+        ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
+-- 3. 创建子表2：交易流水表（数据分区表、复合主键、多重外键）
+CREATE TABLE quant_trades (
+    trade_id BIGINT,
+    trade_date DATE,
+    account_id INT,
+    strategy_id INT,
+    symbol VARCHAR(20) NOT NULL,
+    direction VARCHAR(10),
+    price DECIMAL(10,3),
+    volume INT,
+    PRIMARY KEY (trade_id, trade_date),
+    CONSTRAINT fk_trade_account FOREIGN KEY (account_id) REFERENCES quant_accounts(account_id)
+        ON DELETE RESTRICT,
+    CONSTRAINT fk_trade_strategy FOREIGN KEY (strategy_id) REFERENCES quant_strategies(strategy_id)
+        ON DELETE RESTRICT
+)
+PARTITION BY RANGE (trade_date) (
+    PARTITION p_2023 VALUES LESS THAN ('2024-01-01'),
+    PARTITION p_2024_h1 VALUES LESS THAN ('2024-07-01'),
+    PARTITION p_2024_h2 VALUES LESS THAN ('2025-01-01'),
+    PARTITION p_future VALUES LESS THAN (MAXVALUE)
+);
+```
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp3/1.png')} alt="分区表创建及初始数据插入验证" />
+  <figcaption>分区表创建及初始数据插入验证</figcaption>
+</figure>
+
+### 体会索引与查询计划
+
+对比在未建立索引和建立复合索引的情况下，查询特定标的大额交易时的执行计划差异。
+
+```sql
+-- 创建联合索引前，查看执行计划
+EXPLAIN SELECT * FROM quant_trades WHERE symbol = 'BTC/USDT' AND (price * volume) > 70000;
+
+-- 创建联合索引
+CREATE INDEX idx_trades_symbol_price ON quant_trades(symbol, price);
+
+-- 创建索引后，再次查看执行计划
+EXPLAIN SELECT * FROM quant_trades WHERE symbol = 'BTC/USDT' AND (price * volume) > 70000;
+```
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp3/2.png')} alt="创建索引后执行计划显示命中了 Bitmap Heap Scan" />
+  <figcaption>创建索引后执行计划显示命中了 Bitmap Heap Scan</figcaption>
+</figure>
+
+## 数据的更新与删除验证（部分由 AI 拟题）
+
+### 主外键约束下的更新与删除
+
+测试主表主键的级联更新效果，以及在子表存在外键引用时强行删除主表数据被拦截的情况。
+
+```sql
+-- 题目1：更新主表主键（体验 CASCADE 级联更新）
+-- 业务场景：币安交易所（Binance）的 broker_id 从 1 升级变更为 99。
+-- 预期结果：成功。因为建表时设置了 ON UPDATE CASCADE，
+-- 子表 quant_accounts 中的 broker_id 也会自动变成 99。
+UPDATE quant_brokers SET broker_id = 99 WHERE broker_name = 'Binance';
+
+-- 验证级联更新是否生效
+SELECT * FROM quant_accounts;
+
+-- 题目2：尝试删除主表被引用的数据（体验 RESTRICT 约束拦截）
+-- 业务场景：尝试直接下架（删除）编号为 101 的策略。
+-- 预期结果：报错。因为交易流水表里还有 101 策略的交易记录，
+-- 数据库会保护数据不被误删。
+DELETE FROM quant_strategies WHERE strategy_id = 101;
+```
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp3/3.png')} alt="主外键约束测试：级联更新成功与受限删除报错" />
+  <figcaption>主外键约束测试：级联更新成功与受限删除报错</figcaption>
+</figure>
+
+### 非主键属性更新与子查询操作
+
+```sql
+-- 题目3：更新主表的非主键属性
+-- 业务场景：华泰证券提升了 API 接口的调用频率限制，更新为 2000。
+-- 预期结果：直接成功，不影响其他表。
+UPDATE quant_brokers SET api_rate_limit = 2000 WHERE broker_name = 'Huatai Securities';
+
+-- 题目4：删除主表非关键数据（未被外键引用的行）
+-- 为了演示，先插入一个从未使用过的测试策略 104。
+INSERT INTO quant_strategies VALUES (104, 'Testing_Strat', 'Tom', 'Low');
+
+-- 业务场景：删除这个没有任何交易记录的废弃策略 104。
+-- 预期结果：成功，因为没有子表数据依赖它。
+DELETE FROM quant_strategies WHERE strategy_name = 'Testing_Strat';
+
+-- 题目5：安全下线策略 102
+-- 业务场景：要彻底删除 102 策略，必须先清理它的历史交易流水（子表），
+-- 再删除策略（主表）。
+-- 第一步：先删除子表中的引用数据
+DELETE FROM quant_trades WHERE strategy_id = 102;
+
+-- 第二步：再删除主表数据
+DELETE FROM quant_strategies WHERE strategy_id = 102;
+
+-- 题目6：使用子查询更新数据
+-- 业务场景：将开在券商 'Interactive Brokers' 下的所有资金账户的
+-- 总资金（total_equity）增加 10% 作为补贴。
+-- 逻辑：通过子查询找出券商对应的 broker_id，然后更新账户表。
+UPDATE quant_accounts
+SET total_equity = total_equity * 1.10
+WHERE broker_id IN (
+    SELECT broker_id FROM quant_brokers WHERE broker_name = 'Interactive Brokers'
+);
+
+-- 题目7：使用子查询删除数据
+-- 业务场景：风控部门要求，撤销所有风险等级为 'High'（高风险）的策略
+-- 所产生的所有未结交易记录。
+DELETE FROM quant_trades
+WHERE strategy_id IN (
+    SELECT strategy_id FROM quant_strategies WHERE risk_level = 'High'
+);
+```
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp3/4.png')} alt="非主键更新及基于子查询的高级更新删除操作" />
+  <figcaption>非主键更新及基于子查询的高级更新删除操作（只展示最后一部分执行成功）</figcaption>
+</figure>
+
+## 数据库权限管理与模式隔离
+
+本部分实验在 FinalShell 终端中使用 `gsql` 命令行工具完成，利用 `\c` 命令切换不同身份的用户，验证 openGauss 严格的权限管控与模式（Schema）隔离机制。
+
+### 管理员准备环境与初始化数据
+
+首先以超级管理员 `joe` 的身份登录，创建一个普通用户 `alice`，并在管理员自己的 Schema 下创建一张“机密”表。
+
+```sql
+-- 1. 创建普通用户 alice
+CREATE USER alice WITH PASSWORD 'Alice@2024';
+
+-- 2. 管理员 joe 创建一张属于自己的表
+CREATE TABLE joe_table (
+    id INT PRIMARY KEY,
+    info VARCHAR(50)
+);
+
+-- 3. 插入测试数据
+INSERT INTO joe_table VALUES (1, '这是管理员joe的核心数据');
+
+-- 4. 赋予 alice 对 public 模式的基础访问权
+GRANT USAGE ON SCHEMA public TO alice;
+```
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp3/5.png')} alt="管理员创建普通用户与初始表" />
+  <figcaption>管理员创建普通用户与初始表</figcaption>
+</figure>
+
+### 普通用户的权限隔离与独立建表
+
+使用 `\c postgres alice` 切换至普通用户登录，验证数据库的安全隔离特性（“不可见即安全”机制），并测试普通用户在其独立 Schema 下的建表权限。
+
+```sql
+-- 切换为普通用户 alice
+\c postgres alice
+
+-- 测试1：不加模式名查询管理员的表
+SELECT * FROM joe_table;
+-- 预期报错：ERROR: relation "joe_table" does not exist
+-- 因为该表不在 alice 的搜索路径内，数据库隐藏了表的存在。
+
+-- 测试2：显式指定模式名试图越权查询
+SELECT * FROM joe.joe_table;
+-- 预期报错：ERROR: permission denied for schema joe
+-- 精确拦截，alice 无权访问 joe 的模式。
+
+-- 测试3：alice 在自己的专属模式下建表并操作
+CREATE TABLE alice.test_table (
+    id INT PRIMARY KEY,
+    msg VARCHAR(50)
+);
+INSERT INTO alice.test_table VALUES (1, '这是普通用户alice的数据');
+SELECT * FROM alice.test_table;
+```
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp3/6.png')} alt="不加模式名查询管理员的表" />
+  <figcaption>不加模式名查询管理员的表</figcaption>
+</figure>
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp3/106.png')} alt="显式指定模式名试图越权查询" />
+  <figcaption>显式指定模式名试图越权查询</figcaption>
+</figure>
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp3/206.png')} alt="alice 在自己的专属模式下建表并操作" />
+  <figcaption>alice 在自己的专属模式下建表并操作</figcaption>
+</figure>
+
+### 细粒度授权与防篡改验证
+
+模拟真实的业务协同场景：管理员 `joe` 决定将自己的表对 `alice` 开放只读权限，但禁止数据篡改，以此验证“最小权限原则”。
+
+```sql
+-- 切回管理员 joe，进行最小化授权
+\c postgres joe
+
+-- 允许 alice 访问 joe 的模式
+GRANT USAGE ON SCHEMA joe TO alice;
+
+-- 仅允许 alice 只读（SELECT）该表
+GRANT SELECT ON joe.joe_table TO alice;
+
+-- 切回普通用户 alice，验证授权结果
+\c postgres alice
+
+-- 验证1：读取授权数据
+SELECT * FROM joe.joe_table;
+-- 预期结果：查询成功，获取到管理员数据。
+
+-- 验证2：试图篡改授权数据
+UPDATE joe.joe_table SET info = 'alice篡改了数据' WHERE id = 1;
+-- 预期报错：ERROR: permission denied for relation joe_table
+```
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp3/7.png')} alt="授权验证：只读查询成功" />
+  <figcaption>授权验证：只读查询成功</figcaption>
+</figure>
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_exp3/8.png')} alt="授权验证：越权篡改被拦截" />
+  <figcaption>授权验证：越权篡改被拦截</figcaption>
+</figure>
+
+## 实验结论
+
+- 成功完成了符合实际业务场景（量化交易）的多表结构设计，正确实现了具有复合主键与范围分区策略的分区表。
+- 借助 `EXPLAIN` 语句观察到了全表扫描与索引扫描（Bitmap Heap Scan）的区别，验证了索引对查询语句效率优化的关键作用。
+- 验证了 `ON UPDATE CASCADE` 与 `ON DELETE RESTRICT` 外键约束选项，确立了在删除含有外键引用的主表数据时，必须按先子后主的顺序进行安全删除的操作规范。
+- 掌握了复杂 SQL 操作，能熟练运用子查询进行定位更新与关联删除。
+- **在权限管理方面**，成功在命令行客户端中基于 `\c` 指令完成多用户切换。验证了数据库“不可见即安全”的报错机制（relation does not exist），并通过严格的 `GRANT` 配置，实现了满足业务需求（只读审查）的最小权限模型，成功拦截了越权篡改行为。
+
+## 实验体会
+
+- 本次实验没有局限于简单的学生课程模型，而是带入到更具挑战的量化交易系统中。复杂的级联关系和数据分区表设计，让我深刻认识到数据库物理设计必须贴合真实的业务数据体量和生命周期。
+- 亲手执行导致报错的外键拦截操作，比起单纯看书更让人印象深刻，深刻体会到了数据库底层对于业务数据一致性的硬性保护机制。
+- 在执行第三部分实验时，我最初尝试使用图形化工具（DataGrip），但遇到了隐式的系统表越权报错。切换至命令行环境后不仅操作更流畅，还让我深刻领悟到：**openGauss 严格的 Schema 隔离机制保障了不同用户的同名表不冲突；而“无权限即不显示表存在”的设计更是将数据库的安全防范做到了细节里**。
+- 整体而言，这次探索大幅提升了我对 openGauss 特性、约束控制以及权限安全体系的综合实战把控能力。
