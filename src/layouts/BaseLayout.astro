@@ -69,5 +69,63 @@ const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site) : Astro.u
       <slot />
     </main>
     <SiteFooter />
+    <script>
+      const copyCodeText = async (text: string) => {
+        if (navigator.clipboard?.writeText && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+          return;
+        }
+
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.top = '-9999px';
+        document.body.append(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        textarea.remove();
+      };
+
+      const enhanceCodeBlocks = () => {
+        document.querySelectorAll<HTMLPreElement>('.prose pre').forEach((pre) => {
+          if (pre.closest('.code-block-frame')) return;
+
+          const code = pre.querySelector('code');
+          const frame = document.createElement('div');
+          const button = document.createElement('button');
+
+          frame.className = 'code-block-frame';
+          button.type = 'button';
+          button.className = 'code-copy-button';
+          button.textContent = '复制';
+          button.setAttribute('aria-label', '复制代码');
+
+          pre.parentNode?.insertBefore(frame, pre);
+          frame.append(button, pre);
+
+          button.addEventListener('click', async () => {
+            const text = (code?.innerText ?? pre.innerText).replace(/\n$/, '');
+            const originalLabel = button.textContent ?? '复制';
+
+            try {
+              await copyCodeText(text);
+              button.textContent = '已复制';
+              button.classList.add('is-copied');
+            } catch {
+              button.textContent = '复制失败';
+            }
+
+            window.setTimeout(() => {
+              button.textContent = originalLabel;
+              button.classList.remove('is-copied');
+            }, 1800);
+          });
+        });
+      };
+
+      enhanceCodeBlocks();
+      document.addEventListener('astro:page-load', enhanceCodeBlocks);
+    </script>
   </body>
 </html>
