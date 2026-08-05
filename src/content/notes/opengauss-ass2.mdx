@@ -1,0 +1,292 @@
+---
+title: "高级数据字典设计与动态交叉表实现"
+summary: "基于 openGauss 设计采用代理键与 SCD Type 2 的学科数据字典，保留编码变更历史，并使用标准 SQL 与 PL/pgSQL 存储过程实现静态、动态交叉表查询。"
+publishedAt: 2026-05-12
+publishedLabel: "2026 年 5 月"
+tags: ["openGauss", "数据字典", "SCD Type 2", "代理键", "动态 SQL", "存储过程", "交叉表"]
+listingTags: ["数据库"]
+cover: "/images/notes/opengauss_ass2/opengauss-ass2-hero.png"
+coverPosition: "50% 50%"
+authors:
+  - name: "JaneNSea"
+    role: "作者"
+    avatar: "/avatar.jpg"
+featured: false
+priority: 0
+draft: false
+readingMinutes: 12
+relatedProjects: []
+---
+
+import { withBase } from '../../utils/url';
+
+## 实验目的
+
+- 深入理解缓慢变化维（SCD Type 2）机制，解决学科代码有效期、覆盖替换及历史原信息保留问题。
+- 掌握在禁用原生 Pivot 函数的前提下，通过标准 SQL 与存储过程分别实现静态与动态交叉表（行转列）。
+
+## 数据字典与历史信息保留设计
+
+### 架构选型：多方案对比与最优解
+
+**常规方案（树形递归＋业务主键）：** 将学科代码拆分成树形结构，例如使用 `parent_id` 建立关联。此方案结构复杂，而且在处理“编码替换”时，若直接更新节点会破坏历史轨迹，导致原始信息无法保留。
+
+**较优方案（SCD Type 2 拉链表＋代理键）：** 不再使用业务编码作为主键，引入无业务含义的自增 `sk_id` 作为代理键，并增加 `start_date` 和 `end_date` 字段。该方案能够隔离业务代码规则变化与底层物理关联，满足编码变化、有效期调整、代码替换和历史追溯等需求。
+
+### 需求 1、2：编码长度与编码方式改变
+
+**需求对应：** 编码长度改变；编码方式改变，例如增加层级或将门类与一级学科合并。
+
+**解决思路：** 学籍表只关联代理键 `sk_id`。当编码长度或编码方式改变时，将旧规则数据标记为失效，再插入新规则数据即可。由于外键不直接依赖业务编码，因此不会发生外键失效，也不需要进行级联更新。
+
+```sql
+-- 采用拉链表设计
+CREATE TABLE subject_dict (
+    sk_id SERIAL PRIMARY KEY,             -- 核心：无业务意义的代理键
+    subject_code VARCHAR(20) NOT NULL,    -- 允许重复，因为不同时期含义不同
+    subject_name VARCHAR(100) NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE DEFAULT '9999-12-31',
+    is_active BOOLEAN DEFAULT TRUE
+);
+
+CREATE TABLE student_info (
+    student_id VARCHAR(20) PRIMARY KEY,
+    hometown VARCHAR(50),
+    subject_sk_id INT NOT NULL,           -- 核心：只关联代理键，不关联业务代码
+    enrollment_date DATE
+);
+
+-- 插入初始的学科字典数据（全部标记为当前有效）
+INSERT INTO subject_dict (subject_code, subject_name, subject_level, start_date) VALUES
+('07', '理学', '门类', '1990-01-01'),
+('08', '工学', '门类', '1990-01-01'),
+('09', '农学', '门类', '1990-01-01'),
+('0811', '控制科学与工程', '一级学科', '1990-01-01'),
+('0812', '计算机科学与技术', '一级学科', '1990-01-01'),
+('0813', '建筑学', '一级学科', '1990-01-01'),
+('081201', '计算机系统结构', '二级学科', '1990-01-01'),
+('081202', '计算机软件与理论', '二级学科', '1990-01-01'),
+('081203', '计算机应用技术', '二级学科', '1990-01-01');
+
+-- 模拟一名历史学生：1996 年入学，四川籍，专业为 081202 计算机软件与理论
+-- 假设查出的 081202 对应 sk_id 为 8
+INSERT INTO student_info (
+    student_id,
+    student_name,
+    hometown,
+    subject_sk_id,
+    enrollment_date
+)
+VALUES ('1996001', '张老三', '四川', 8, '1996-09-01');
+
+-- =========================================================
+-- 需求 1、2：编码长度改变／编码方式改变
+-- =========================================================
+UPDATE subject_dict
+SET end_date = '2004-12-31', is_active = FALSE
+WHERE subject_code = '0812' AND is_active = TRUE;
+
+INSERT INTO subject_dict (
+    subject_code,
+    subject_name,
+    subject_level,
+    start_date
+)
+VALUES ('081', '门类与一级合并-计算机大类', '合并学科', '2005-01-01');
+```
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_ass2/01.png')} alt="建立学科数据字典表和学生信息表" />
+  <figcaption>建立数据库表</figcaption>
+</figure>
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_ass2/02.png')} alt="向学科数据字典和学生信息表插入初始数据" />
+  <figcaption>插入初始数据</figcaption>
+</figure>
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_ass2/1.png')} alt="通过结束旧编码有效期并插入新编码解决编码规则变化" />
+  <figcaption>解决编码长度与编码方式改变问题</figcaption>
+</figure>
+
+### 需求 3、4、5：有效期、代码替换与历史保留
+
+**需求对应：** 代码有效期改变；代码被覆盖或替换；要求保留原始历史信息。
+
+**解决思路：** 不执行物理删除，而是通过 `UPDATE` 结束旧记录的生命周期，再通过 `INSERT` 启用新记录。历史学生仍然关联旧记录的代理键，新学生则关联新记录，从而保留不同时期的业务快照。
+
+```sql
+-- 需求 3：有效期改变
+-- 将旧的“计算机软件与理论”有效期结束于 2010-09-30
+UPDATE subject_dict
+SET end_date = '2010-09-30', is_active = FALSE
+WHERE subject_code = '081202' AND is_active = TRUE;
+
+-- 需求 4：代码被覆盖替换
+-- 从 2010-10-01 起，新代码覆盖旧代码体系
+INSERT INTO subject_dict (subject_code, subject_name, start_date) VALUES
+('081202', '软件工程', '2010-10-01'),
+('081204', '计算机软件与理论', '2010-10-01');
+
+-- 需求 5：保留原信息
+-- 录入新生数据，籍贯与专业关联当期快照
+INSERT INTO student_info VALUES
+(
+    '2011001',
+    '重庆',
+    (
+        SELECT sk_id
+        FROM subject_dict
+        WHERE subject_code = '081202'
+          AND is_active = TRUE
+    ),
+    '2011-09-01'
+);
+
+-- 验证：历史学生仍显示原专业，新学生关联替换后的新专业
+SELECT
+    s.enrollment_date,
+    s.hometown,
+    d.subject_code,
+    d.subject_name
+FROM student_info s
+JOIN subject_dict d ON s.subject_sk_id = d.sk_id;
+```
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_ass2/03.png')} alt="使用 UPDATE 结束旧记录并使用 INSERT 建立新版本" />
+  <figcaption>UPDATE 与 INSERT 执行成功，解决有效期和代码替换问题</figcaption>
+</figure>
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_ass2/04.png')} alt="插入关联当前有效学科版本的新学生数据" />
+  <figcaption>插入新学生数据，保留当期专业快照</figcaption>
+</figure>
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_ass2/2.png')} alt="联合查询展示不同入学时间学生对应的历史和当前专业信息" />
+  <figcaption>联合查询结果：历史版本与当前版本并存</figcaption>
+</figure>
+
+## 交叉表查询实现
+
+本部分要求不使用数据库管理系统直接提供的原生 `PIVOT` 函数，分别通过静态条件聚合与动态 SQL 实现行转列。
+
+### 方案一：静态行转列
+
+**需求对应：** 课程集合已知，可以按照固定课程编写 SQL。
+
+**解决思路：** 使用标准 SQL 的 `MAX` 与 `CASE WHEN` 条件聚合，将课程行转换为课程列。
+
+```sql
+CREATE TABLE scores (
+    name VARCHAR(20),
+    course VARCHAR(50),
+    score INT
+);
+
+INSERT INTO scores VALUES
+('张三', '数据库', 90),
+('张三', '操作系统', 55),
+('张三', '编译原理', 78),
+('张三', '计算机网络', 45),
+('李四', '数据库', 80),
+('李四', '操作系统', 73),
+('李四', '编译原理', 87),
+('李四', '计算机网络', 68),
+('王五', '数据库', 85),
+('王五', '操作系统', 66),
+('王五', '编译原理', 66),
+('王五', '计算机网络', 98),
+('孙六', '数据库', 70),
+('孙六', '操作系统', 77),
+('孙六', '编译原理', 56),
+('孙六', '计算机网络', 82);
+
+-- 已知四门课程时，使用标准条件聚合实现行转列
+SELECT
+    name AS 姓名,
+    MAX(CASE WHEN course = '编译原理' THEN score ELSE NULL END) AS 编译原理,
+    MAX(CASE WHEN course = '操作系统' THEN score ELSE NULL END) AS 操作系统,
+    MAX(CASE WHEN course = '计算机网络' THEN score ELSE NULL END) AS 计算机网络,
+    MAX(CASE WHEN course = '数据库' THEN score ELSE NULL END) AS 数据库
+FROM scores
+GROUP BY name
+ORDER BY name;
+```
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_ass2/05.png')} alt="创建成绩表并插入四名学生的课程成绩" />
+  <figcaption>创建成绩表并插入测试数据</figcaption>
+</figure>
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_ass2/3.png')} alt="使用 MAX 和 CASE WHEN 实现静态交叉表查询" />
+  <figcaption>静态交叉表查询结果</figcaption>
+</figure>
+
+### 方案二：动态生成视图的存储过程
+
+**需求对应：** 灵活处理任意课程集合，并将动态交叉表逻辑封装为存储过程。
+
+**解决思路：** 关系型数据库在解析普通 `SELECT` 时必须预先确定列数。为适配未知数量的课程，可在 PL/pgSQL 存储过程中遍历所有不同课程名称，动态拼接 `MAX(CASE WHEN ...)` 表达式，再执行动态 DDL 创建或替换交叉表视图。
+
+```sql
+CREATE OR REPLACE PROCEDURE proc_dynamic_crosstab()
+AS
+DECLARE
+    v_sql TEXT;
+    v_record RECORD;
+BEGIN
+    v_sql :=
+        'CREATE OR REPLACE VIEW view_cross_scores AS '
+        || 'SELECT name AS 姓名';
+
+    -- 动态遍历课程集合，并为每门课程拼接一个条件聚合列
+    FOR v_record IN (
+        SELECT DISTINCT course
+        FROM scores
+        ORDER BY course
+    ) LOOP
+        v_sql := v_sql
+            || ', MAX(CASE WHEN course = '''
+            || v_record.course
+            || ''' THEN score ELSE NULL END) AS "'
+            || v_record.course
+            || '"';
+    END LOOP;
+
+    v_sql := v_sql || ' FROM scores GROUP BY name;';
+
+    -- 执行动态 SQL，生成交叉表视图
+    EXECUTE v_sql;
+END;
+/
+
+-- 调用存储过程后，查询动态生成的视图
+CALL proc_dynamic_crosstab();
+SELECT * FROM view_cross_scores;
+```
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_ass2/06.png')} alt="在 openGauss 中编写动态交叉表存储过程" />
+  <figcaption>编写动态交叉表存储过程</figcaption>
+</figure>
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_ass2/4.png')} alt="调用存储过程并查询动态生成的交叉表视图" />
+  <figcaption>动态调用存储过程并输出弹性交叉表结构</figcaption>
+</figure>
+
+## 实验结论
+
+- **拉链表与代理键能够有效支持历史溯源：** 面对编码长度改变、代码覆盖替换等情况，直接修改或删除带有业务含义的主键容易造成级联破坏和历史档案失真。通过无业务含义的代理键配合 SCD Type 2 生命周期字段，可以解耦物理关联与业务编码，并保留不同历史时间点的数据快照。
+- **动态 SQL 与存储过程突破了静态交叉表限制：** 在不使用原生 Pivot 扩展函数的条件下，PL/pgSQL 循环、字符串拼接和动态 DDL 可以根据当前课程集合生成视图，实现对未知课程数量的自适应行转列。
+- **需求特征决定架构选型：** 树形结构与递归查询虽然能够表达层级关系，但在强调不可变历史和版本追踪的场景中，扁平化维度建模与拉链表更直接，也更符合历史数据保留需求。
+
+## 实验体会
+
+- **改变了对数据更新的认识：** 在企业级核心系统中，历史数据本身具有业务价值。面对业务信息变化，不应仅依赖覆盖式 `UPDATE` 或物理 `DELETE`，而应使用版本记录、逻辑失效和历史快照机制保证业务轨迹完整。
+- **理解了数据库服务端编程的能力：** 动态交叉表要求在课程数量未知时生成不同列结构。通过游标遍历、动态 SQL 拼接和 `EXECUTE`，可以在 openGauss 服务端完成普通静态查询难以表达的动态结构生成逻辑。
