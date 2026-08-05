@@ -150,8 +150,8 @@ const initialsFor = (name: string) => name.trim().slice(0, 2).toUpperCase();
 
 <style>
   .content-hero {
-    width: min(calc(100% - 2rem), 82rem);
-    padding-block: var(--space-7) var(--space-6);
+    width: min(calc(100% - 2rem), 90rem);
+    padding-block: var(--space-7);
     border-bottom: 1px solid var(--color-border);
   }
 
@@ -169,12 +169,12 @@ const initialsFor = (name: string) => name.trim().slice(0, 2).toUpperCase();
 
   .hero-grid {
     display: grid;
-    gap: clamp(2.25rem, 4.5vw, 4.5rem);
+    gap: clamp(2rem, 3.5vw, 3.5rem);
     align-items: center;
   }
 
   .hero-grid.has-visual {
-    grid-template-columns: minmax(0, 1fr) minmax(24rem, 0.56fr);
+    grid-template-columns: minmax(0, 0.95fr) minmax(31rem, 0.82fr);
   }
 
   .hero-copy {
@@ -259,7 +259,7 @@ const initialsFor = (name: string) => name.trim().slice(0, 2).toUpperCase();
   .note-visual {
     position: relative;
     justify-self: end;
-    width: min(100%, 32rem);
+    width: min(100%, 44rem);
     aspect-ratio: 16 / 9;
     margin: 0;
     transform: rotate(1.2deg);
@@ -274,7 +274,7 @@ const initialsFor = (name: string) => name.trim().slice(0, 2).toUpperCase();
 
   .note-visual::before {
     z-index: -1;
-    inset: 16% -3% -13% 9%;
+    inset: 13% -2.5% -11% 8%;
     border: 1px solid rgba(91, 70, 41, 0.18);
     background: rgba(198, 160, 91, 0.16);
     clip-path: polygon(3% 0, 100% 8%, 97% 82%, 90% 100%, 0 93%, 2% 17%);
@@ -294,9 +294,10 @@ const initialsFor = (name: string) => name.trim().slice(0, 2).toUpperCase();
   .note-visual img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
     object-position: center;
     border: 1px solid rgba(91, 70, 41, 0.18);
+    background: rgba(255, 251, 243, 0.74);
     box-shadow: 0 16px 36px rgba(83, 57, 23, 0.12);
     clip-path: polygon(2% 0, 100% 5%, 98% 86%, 90% 100%, 0 94%, 1% 13%);
   }
@@ -405,8 +406,8 @@ const initialsFor = (name: string) => name.trim().slice(0, 2).toUpperCase();
     }
 
     .note-visual {
-      justify-self: start;
-      width: min(92vw, 32rem);
+      justify-self: center;
+      width: min(100%, 42rem);
     }
 
     .note-aside {
@@ -427,7 +428,8 @@ const initialsFor = (name: string) => name.trim().slice(0, 2).toUpperCase();
     }
 
     .note-visual {
-      width: min(90vw, 30rem);
+      width: 100%;
+      transform: rotate(0.6deg);
     }
   }
 </style>

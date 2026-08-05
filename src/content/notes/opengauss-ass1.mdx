@@ -1,0 +1,311 @@
+---
+title: "数据库ASS1：日常维护、SQL 性能优化与备份恢复"
+summary: "记录 openGauss 数据库的操作系统与会话级性能巡检、海量测试数据构造、执行计划与索引优化、日志排查，以及逻辑备份、物理备份和灾难恢复实验。"
+publishedAt: 2026-05-07
+publishedLabel: "2026 年 5 月"
+tags: ["openGauss", "数据库运维", "SQL 性能优化", "执行计划", "索引", "备份恢复", "DataGrip", "FinalShell"]
+listingTags: ["数据库"]
+cover: "/images/notes/opengauss_ass1/ass1.png"
+coverPosition: "50% 50%"
+authors:
+  - name: "JaneNSea"
+    role: "作者"
+    avatar: "/avatar.jpg"
+featured: false
+priority: 0
+draft: false
+readingMinutes: 14
+relatedProjects: []
+---
+
+import { withBase } from '../../utils/url';
+
+## 实验目的
+
+- 掌握 openGauss 数据库的系统级环境监控与会话级性能检查方法。
+- 理解基于代价的查询优化器（CBO）工作原理，熟练使用 `EXPLAIN ANALYZE` 分析 SQL 执行计划，验证索引对大规模数据查询性能的决定性提升。
+- 掌握 openGauss 数据库的运行日志管理与错误排查分析技巧。
+- 深入探究数据库逻辑备份与物理备份的底层区别，掌握 `gs_dump` 与 `gs_basebackup` 的实战应用及灾难恢复流程。
+- 明确图形化工具 DataGrip 与命令行终端 FinalShell 在数据库开发和底层运维管理中的职责划分。
+
+## 数据库维护与性能调优
+
+### 操作系统与数据库级别的性能检查
+
+数据库的稳定运行依赖于底层操作系统的资源调度。首先在 **FinalShell** 中对 openEuler 系统的 CPU、内存及磁盘使用率进行常规巡检；随后在 **DataGrip** 中查询系统视图，排查数据库内部是否存在慢 SQL 会话。
+
+系统性能信息也可以直接从 FinalShell 的资源面板中查看，但为了完整展示运维检查流程，本实验仍通过命令行完成巡检。
+
+#### 操作系统与数据库状态检查
+
+```bash
+top
+# 观察终端输出。按大写 M 可按内存排序，按大写 P 可按 CPU 排序，按 q 退出。
+
+free -h
+# 查看 available 列，确认可用内存是否充足。
+
+df -hT
+# 重点查看根目录 / 和 openGauss 数据目录所在磁盘的 Use% 是否超过 80%。
+
+gs_checkperf
+gs_checkperf --detail
+# 查看 openGauss 数据库的具体性能信息。
+```
+
+#### 活动会话检查
+
+```sql
+SELECT
+    pid,
+    usename AS 执行用户,
+    state AS 状态,
+    extract(epoch FROM (now() - query_start)) AS 执行耗时_秒,
+    query AS 执行的SQL语句
+FROM pg_stat_activity
+WHERE state = 'active'
+  AND pid != pg_backend_pid()
+ORDER BY query_start ASC;
+```
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_ass1/1.png')} alt="操作系统资源与数据库活动会话性能检查" />
+  <figcaption>操作系统资源与数据库活动会话性能检查</figcaption>
+</figure>
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_ass1/001.png')} alt="使用 top 检查系统进程与资源占用" />
+  <figcaption>使用 top 检查系统进程与资源占用</figcaption>
+</figure>
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_ass1/002.png')} alt="使用 free 检查系统内存状态" />
+  <figcaption>使用 free 检查系统内存状态</figcaption>
+</figure>
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_ass1/003.png')} alt="使用 df 检查磁盘空间占用" />
+  <figcaption>使用 df 检查磁盘空间占用</figcaption>
+</figure>
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_ass1/004.png')} alt="使用 gs_checkperf 检查 openGauss 性能" />
+  <figcaption>使用 gs_checkperf 检查 openGauss 性能</figcaption>
+</figure>
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_ass1/005.png')} alt="查询数据库活动会话与 SQL 执行耗时" />
+  <figcaption>查询数据库活动会话与 SQL 执行耗时</figcaption>
+</figure>
+
+### 构造海量数据与统计信息收集
+
+脱离数据量讨论 SQL 优化缺乏实际意义。为了验证优化器的真实行为，在 DataGrip 中利用 openGauss 的 `generate_series` 函数快速构造 10 万条测试数据，并强制收集统计信息。
+
+```sql
+CREATE TABLE demo_users (
+    user_id INT,
+    user_name VARCHAR(50),
+    account_status INT,
+    register_time TIMESTAMP
+);
+
+-- 插入 10 万条测试数据
+INSERT INTO demo_users (user_id, user_name, account_status, register_time)
+SELECT
+    generate_series(1, 100000),
+    'test_user_' || generate_series(1, 100000),
+    (random() * 5)::int,
+    clock_timestamp();
+
+-- 收集表统计信息，确保优化器（CBO）能够做出正确决策
+ANALYZE demo_users;
+```
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_ass1/2.png')} alt="海量测试数据构造与统计信息收集" />
+  <figcaption>海量测试数据构造与统计信息收集</figcaption>
+</figure>
+
+### SQL 执行计划分析与索引优化
+
+分别在建立索引前与建立索引后执行相同的等值查询，利用 `EXPLAIN ANALYZE` 观察底层扫描机制及执行耗时的变化。实验中，建立 B-Tree 索引后，扫描方式由全表扫描（`Seq Scan`）转变为索引扫描（`Index Scan`），查询耗时明显下降。
+
+```sql
+-- 优化前：查看真实执行计划，预计使用全表扫描
+EXPLAIN ANALYZE
+SELECT * FROM demo_users WHERE user_id = 99999;
+
+-- 针对查询字段创建 B-Tree 索引
+CREATE INDEX idx_demo_users_id ON demo_users(user_id);
+
+-- 优化后：再次查看执行计划，预计使用索引扫描
+EXPLAIN ANALYZE
+SELECT * FROM demo_users WHERE user_id = 99999;
+```
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_ass1/3.png')} alt="优化前使用全表扫描 Seq Scan" />
+  <figcaption>优化前：全表扫描（Seq Scan）耗时较高</figcaption>
+</figure>
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_ass1/4.png')} alt="优化后使用索引扫描 Index Scan" />
+  <figcaption>优化后：索引扫描（Index Scan）显著提升查询性能</figcaption>
+</figure>
+
+### 系统运行日志管理
+
+在 FinalShell 中切换至数据库管理用户 `omm`，进入日志目录，通过命令行工具实时监控数据库运行状态并排查报错信息。
+
+```bash
+su - omm
+cd "$GAUSSLOG/pg_log/dn_6001"
+ls -lt
+
+# 实时监控指定日志文件
+# 将 <latest-log-file> 替换为实际文件名
+tail -100f <latest-log-file>
+
+# 在日志文件中检索 ERROR 级别信息
+grep "ERROR" *.log -n
+
+# 持续监控并过滤错误信息
+tail -f *.log | grep "ERROR"
+```
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_ass1/5.png')} alt="在 FinalShell 中监控并过滤数据库错误日志" />
+  <figcaption>在 FinalShell 终端监控并过滤数据库报错日志</figcaption>
+</figure>
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_ass1/006.png')} alt="查看 openGauss 运行日志和错误信息" />
+  <figcaption>查看 openGauss 运行日志和错误信息</figcaption>
+</figure>
+
+## 数据库备份与灾难恢复
+
+### 逻辑备份与表级恢复模拟
+
+逻辑备份通过导出 SQL 语句（DDL 和 DML）实现，适合跨版本迁移或单表级恢复。在 FinalShell 中利用 `gs_dump` 导出 `demo_users` 表，随后在 DataGrip 中模拟删除数据表，最后通过 `gsql` 终端导入脚本并完成恢复。
+
+```bash
+# 1. 逻辑备份：导出特定表为 SQL 文本文件
+# -U 参数可根据实际认证方式选择是否提供
+gs_dump \
+  -U omm \
+  -p 26000 \
+  -t demo_users \
+  -f /home/omm/my_backup/demo_users_bak.sql \
+  -F p \
+  newstuma
+
+# 在 DataGrip 中执行以下 SQL，模拟数据表丢失：
+# DROP TABLE demo_users;
+
+# 2. 逻辑恢复：执行 SQL 脚本还原数据
+gsql \
+  -p 5432 \
+  -d postgres \
+  -f /home/omm/demo_users_bak.sql
+```
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_ass1/6.png')} alt="使用 gs_dump 进行单表逻辑备份" />
+  <figcaption>使用 gs_dump 进行单表逻辑备份</figcaption>
+</figure>
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_ass1/007.png')} alt="在 DataGrip 中删除测试数据表" />
+  <figcaption>在 DataGrip 中删除测试数据表</figcaption>
+</figure>
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_ass1/7.png')} alt="使用 gsql 导入 SQL 脚本完成逻辑恢复" />
+  <figcaption>使用 gsql 导入 SQL 脚本实现逻辑恢复</figcaption>
+</figure>
+
+### 物理全量备份与实例灾难恢复
+
+物理备份直接复制底层二进制数据文件，速度较快，适用于整个实例的灾难级恢复。实验模拟数据库底层文件异常的场景，通过恢复物理备份文件重新启动数据库实例。
+
+即使在测试环境中，也不建议使用 `rm -rf` 构造灾难场景。误删文件可能导致 openGauss 环境需要重新配置。采用数据目录改名的方式更加安全，也便于回滚。
+
+```bash
+# 1. 检查数据库状态
+gs_ctl status
+
+# 2. 停止数据库
+gs_ctl stop -D "$PGDATA"
+
+# 3. 重命名原数据目录，保留异常实例
+# 错误写法：会尝试引用名为 PGDATA_corrupted 的环境变量
+# mv $PGDATA $PGDATA_corrupted
+
+# 正确写法
+mv "$PGDATA" "${PGDATA}_corrupted"
+
+# 4. 恢复物理备份
+cp -r /home/omm/physical_backup "$PGDATA"
+
+# 5. 修复数据目录权限
+chmod 700 -R "$PGDATA"
+
+# 6. 启动数据库
+gs_ctl start -D "$PGDATA"
+
+# 7. 检查数据库是否启动成功
+gs_ctl status
+```
+
+恢复后，数据库的大部分功能可以正常运行，但 DataGrip 连接仍出现以下错误：
+
+```text
+DBMS: PostgreSQL (ver. 9.2.4)
+Case sensitivity: plain=lower, delimited=exact
+Driver: PostgreSQL JDBC Driver (ver. 42.7.3, JDBC4.2)
+Unsupported or unrecognized SSL message.
+```
+
+可能原因是恢复后的数据目录与现有进程、缓存或连接配置仍存在不一致。更稳妥的处理方式是恢复原数据目录，并确认旧进程完全退出后重新启动相关服务。
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_ass1/8.png')} alt="物理备份与数据库实例恢复过程" />
+  <figcaption>物理备份、异常模拟及实例恢复过程</figcaption>
+</figure>
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_ass1/9.png')} alt="恢复物理备份并修复数据目录权限" />
+  <figcaption>恢复物理备份并修复数据目录权限</figcaption>
+</figure>
+
+<figure>
+  <img src={withBase('/images/notes/opengauss_ass1/10.png')} alt="恢复后重新启动并检查数据库状态" />
+  <figcaption>恢复后重新启动并检查数据库状态</figcaption>
+</figure>
+
+## 思考与讨论：日常维护手段的对比分析
+
+### 逻辑备份与物理备份的区别与应用场景
+
+- **逻辑备份（`gs_dump`）**：本质是生成建表和插入数据的 SQL 文本。优点是跨平台、跨版本兼容性较好，支持细粒度备份，例如仅备份某张表或某个视图；缺点是备份和恢复速度较慢，因为恢复时需要重新经过数据库解析与事务写入。适用于日常单表数据迁移或小规模数据库的定期归档。
+- **物理备份（`gs_basebackup`）**：本质是在文件系统级别复制底层数据块文件，并包含恢复所需的 WAL 日志。优点是速度较快，恢复时不需要逐条解析 SQL，可用于快速拉起异常实例；缺点是备份文件体积较大，通常不能跨操作系统或数据库大版本恢复。适用于生产环境的实例级全量灾备。
+
+### 优化器与构造测试数据的必要性
+
+在 SQL 调优实验中，如果表内只有少量数据，即使建立了 B-Tree 索引，数据库仍可能选择 `Seq Scan`。这是因为 openGauss 使用 **基于代价的优化器（CBO，Cost-Based Optimizer）**。
+
+当数据量较小时，优化器可能判断直接读取少量数据页的 I/O 代价低于“先访问索引树，再回表读取数据”的代价。只有构造足够规模的数据并通过 `ANALYZE` 收集统计信息后，优化器才更可能选择索引访问路径。
+
+## 实验结论
+
+- **工具职责分离**：DataGrip 等 GUI 工具更适合编写和执行 SQL 脚本、查看数据与分析结果；FinalShell 等 CLI 工具则适合处理物理文件、读取底层运行日志以及执行数据库启停和恢复操作。
+- **索引效能验证**：实验验证了缺少索引时查询需要执行全表扫描，而建立合适索引后可转为索引扫描，显著降低查询耗时。
+- **灾难应急闭环**：完成了逻辑单表备份恢复与物理实例恢复两套流程，验证 `gs_dump` 与物理备份机制能够为数据持久性和实例恢复提供保障。
+
+## 实验体会
+
+- **性能优化需要真实数据规模**：少量测试数据难以展示索引效果。通过 `generate_series` 构造十万条数据后，`EXPLAIN ANALYZE` 的执行计划对比更直观地展示了索引与查询优化器的工作机制。
+- **文件权限与数据库安全机制紧密相关**：物理恢复过程中若遗漏 `chmod 700 -R "$PGDATA"`，数据库可能因权限不符合要求而拒绝启动。
+- **谨慎执行高风险命令**：涉及数据库数据目录时，应避免未经确认地执行 `rm -rf`。更安全的做法是先改名保留原目录，确认恢复方案有效后再处理旧数据，并对自动生成的运维命令进行人工复核。
