@@ -1,0 +1,1167 @@
+---
+title: "仓颉编程智能学伴系统"
+summary: "一个面向仓颉编程学习场景的智能学伴项目，集成 RAG 知识检索、结构化问答、学情诊断、动态练习、个性化学习计划、学习日志与真实编译代码沙箱。"
+cover: "images\projects\cangjieagent\cangjieagent.webp"
+publishedAt: 2026-06-05
+updatedAt: 2026-06-05
+tags: ["Cangjie", "Python", "FastAPI", "RAG", "LLM", "LangChain", "ChromaDB", "SQLAlchemy", "Code Sandbox"]
+featured: true
+priority: 80
+draft: false
+type: "project"
+status: "completed"
+role: "系统设计与后端实现"
+year: 2026
+repositories:
+  - label: "项目代码仓库"
+    url: "https://gitcode.com/JaneNSea/cangjie_study_partner"
+    stack: "Python · FastAPI · SQLAlchemy · LangChain · ChromaDB · Cangjie"
+---
+
+## 项目概述
+
+仓颉编程智能学伴系统面向仓颉语言初学者，重点解决通用大语言模型对新语言语法、标准库和编译错误理解不足的问题。系统以检索增强生成（RAG）为知识底座，将仓颉技术文档、标准库资料和代码示例接入问答链路，并结合真实编译代码沙箱完成练习验证。
+
+- **核心能力**：智能问答、知识检索、学情诊断、练习生成与反馈、个性化学习计划、学习过程记录、在线代码沙箱。
+- **后端技术栈**：FastAPI、SQLAlchemy、LangChain、ChromaDB、Qwen、BGE-M3、BGE Reranker。
+- **代码仓库**：[GitCode · cangjie_study_partner](https://gitcode.com/JaneNSea/cangjie_study_partner)
+- **隐私说明**：本文已移除作者姓名、组织信息、具体机器路径及其他可识别个人信息。
+
+## 立项原因与项目背景深度剖析
+
+### 仓颉编程语言的新颖性与大模型的"知识盲区"
+
+仓颉（Cangjie）编程语言是近年来全新发布的一门全场景应用编程语言，代表了华为在系统编程领域的最新探索。该语言融合了现代编程语言的多项高级特性：
+
+- **强大的宏机制 (Macro)**：允许在编译期进行抽象语法树（AST）的操作，极大地增强了语言的元编程能力。用户可以通过宏实现领域特定语言（DSL）的定制扩展。
+
+- **轻量级并发模型**：以 `spawn` 关键字为核心的轻量级线程（协程）模型，使得高并发网络编程与大规模数据处理变得极为简便，性能对标 Go 语言。
+
+然而，由于仓颉语言面世时间较晚（首次公开发布约在 2023 年中期），市面上绝大多数开源或闭源的大型语言模型（LLM）（包括 Llama 3、Qwen 2.5、GPT-4 等）的预训练阶段极少甚至完全没有接触过仓颉的官方文档与代码库。这种"训练语料缺失"导致了极为严重的教学痛点：
+
+1.  **严重的逻辑"幻觉"（Hallucination）**：当初学者向纯原生 LLM 提问仓颉的具体语法时（例如"如何在仓颉中创建一个并发任务"），模型往往会凭借过往经验，强行用 Rust、Swift 或 Julia 的语法结构去"脑补"仓颉的代码。这种虚假代码在仓颉编译器（`cjc`）下不仅无法通过，甚至会让初学者产生对语言哲学的错误认知。
+
+2.  **标准库知识断层**：大模型完全不了解仓颉标准库（比如 `std.collection.HashMap`、`std.io.File` 等）的包结构、API 签名和使用约定，导致在解答实际工程问题时生成的示例代码调用的是不存在的方法。
+
+3.  **无法针对性判题与诊断**：缺乏针对仓颉错误堆栈的诊断能力，模型无法理解诸如"生命周期冲突"或"宏展开异常"等仓颉特有的编译错误，因此无法提供准确的"易错点"或"最佳实践"反馈。
+
+### 智能学伴系统的工程目标与七大核心功能
+
+为了彻底解决大模型在仓颉语言上的知识盲区，本项目旨在开发一款专业的"仓颉智能学伴系统"。该系统通过 **检索增强生成（RAG, Retrieval-Augmented Generation）** 技术，将官方的《仓颉编程语言白皮书》、《语言规范》及标准库文档无缝对接到生成流中，彻底扭转大模型的"想象模式"为"查阅模式"。
+
+根据教育学和智能辅导的先进理念，本系统设计了七大核心功能模块：
+
+**(1) 智能问答模块**  
+支持自然语言提问，回答采用结构化格式"定义—原理—示例—易错点"，融合 RAG 检索的最新文档，确保专业性与准确性。
+
+**(2) 知识库检索模块**  
+接入仓颉官方教材、讲义与代码示例库，通过向量化搜索将学生提问映射到最相关的学习资源，降低模型幻觉，提升回答一致性。
+
+**(3) 学情诊断模块**  
+深度解析学生的提问频率、错题记录、代码沙箱测试结果，识别其薄弱知识点，生成精准的个性学习画像（例如"并发控制掌握欠佳"）。
+
+**(4) 练习生成与评价模块**  
+根据诊断结果针对性出题（选择题、填空题、编程题），在学生提交后通过代码沙箱真实编译验证与 LLM 代码审查双重打分。而且做过的练习会保存到练习记录里面。
+
+**(5) 个性化学习计划模块**  
+基于学情画像与学生目标，生成周期性学习规划（如"本周重点突破仓颉宏系统的三个核心概念"），确保学习目标量化与时间安排科学。
+
+**(6) 学习过程记录模块**  
+通过异步持久化技术流式缓存用户的全部问答与练习日志，类似 GitHub 活跃度热力图展示长期成长曲线，确保学习连续性与进度可视化。
+
+**(7) 代码沙箱模块**  
+通过代码沙箱，学习者可以直接在网页中编写并运行代码，无需预先在本地安装对应编译器，对于初学者来说更加友好。
+
+## 智能学伴系统功能简介
+
+### 系统架构概览与技术选型
+
+本系统后端采用 Python 现代异步技术栈，以 `FastAPI` 作为 Web 框架基座，`SQLAlchemy` 进行异步 ORM 数据交互，`LangChain` 作为 LLM 编排框架，`ChromaDB` 作为轻量级向量数据库。所有 I/O 密集操作均采用协程化设计，确保极高的并发处理能力和响应速度。
+
+### 七模块融合的拓扑架构图
+
+<figure>
+  <img
+    src="/images/projects/cangjieagent/system-architecture.svg"
+    alt="仓颉编程智能学伴系统七模块融合拓扑架构图"
+    loading="lazy"
+  />
+  <figcaption>仓颉编程智能学伴系统七模块融合拓扑架构</figcaption>
+</figure>
+
+## 智能学伴系统的功能实现 (1–2)：智能问答与知识检索
+
+### 智能问答模块 (1) 的设计原理与实现
+
+智能问答模块是系统的第一线交互窗口。该模块接受学生的自然语言提问，经过三个关键步骤：
+
+1.  **问题理解与分类**：通过语义嵌入判断提问属于"语法问题"、"标准库 API 问题"还是"设计模式问题"。
+
+2.  **融合知识库的上下文增强**：调用知识检索模块获取相关文档片段。
+
+3.  **结构化回答生成**：强制采用"定义—原理—示例—易错点"四层模式输出。
+
+```python
+from fastapi import APIRouter, WebSocket, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+import asyncio
+import json
+
+router = APIRouter(prefix="/api", tags=["chat"])
+
+class ChatRequest(BaseModel):
+    learner_id: int
+    question: str
+    history: Optional[list] = []  # 对话历史
+
+@router.post("/chat/ask")
+async def ask_question(request: ChatRequest, db: AsyncSession = Depends(get_db)):
+    """
+    处理用户的问答请求，返回流式回答。
+    """
+    # 1. 取出用户历史对话，用于构建对话上下文
+    history_stmt = select(ChatHistory).where(
+        ChatHistory.learner_id == request.learner_id
+    ).order_by(ChatHistory.created_at.desc()).limit(5)
+    past_chats = await db.execute(history_stmt)
+    history_text = "\n".join([
+        f"Q: {ch.question}\nA: {ch.answer[:200]}"
+        for ch in past_chats.scalars().all()
+    ])
+    
+    # 2. 记录当前提问到数据库
+    chat_record = ChatHistory(
+        learner_id=request.learner_id,
+        question=request.question,
+        answer="",  # 稍后流式更新
+        created_at=datetime.now()
+    )
+    db.add(chat_record)
+    await db.commit()
+    
+    # 3. 异步生成流式回答
+    async def response_stream():
+        full_answer = ""
+        try:
+            async for chunk in rag_service.stream_answer(
+                request.question, 
+                history_text
+            ):
+                full_answer += chunk.get("content", "")
+                yield f"data: {json.dumps(chunk)}\n\n"
+            
+            # 4. 最终回答存库，用于日后检索与诊断
+            chat_record.answer = full_answer
+            await db.commit()
+            
+        except Exception as e:
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+    
+    return StreamingResponse(response_stream(), media_type="text/event-stream")
+```
+
+### 知识检索模块 (2) 的 RAG 实现链路
+
+知识检索模块是智能问答的"知识脑"。它通过向量化嵌入与相似度搜索，从 ChromaDB 中迅速拉取与用户问题最相关的官方文档片段，作为 LLM 生成回答时的背景知识。
+
+#### 向量数据库的初始化与语料摄取
+
+```python
+from langchain_community.document_loaders import DirectoryLoader, TextLoader
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.vectorstores import Chroma
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_openai import ChatOpenAI
+import os
+
+class RagService:
+    def __init__(self, corpus_dir: str = "./backend/corpus/CangjieCorpus"):
+        # 1. 初始化嵌入模型（多语言编码器）
+        self.embeddings = HuggingFaceEmbeddings(
+            model_name="BAAI/bge-m3",
+            model_kwargs={'device': 'cpu'},
+            encode_kwargs={'normalize_embeddings': True}
+        )
+        
+        # 2. 初始化 LLM 模型（Qwen via Dashscope）
+        self.llm = ChatOpenAI(
+            api_key=os.getenv("DASHSCOPE_API_KEY"),
+            base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+            model="qwen-max",
+            temperature=0.7
+        )
+        
+        # 3. 初始化 ChromaDB 向量库
+        self.chroma_dir = "./data/chroma_db"
+        self.retriever = self._init_or_load_chroma(corpus_dir)
+        
+    def _init_or_load_chroma(self, corpus_dir: str):
+        """
+        首次调用时从仓颉语料库加载文档并向量化；
+        后续调用直接加载已序列化的向量库。
+        """
+        if os.path.exists(self.chroma_dir):
+            # 加载已存在的向量库
+            vectordb = Chroma(
+                persist_directory=self.chroma_dir,
+                embedding_function=self.embeddings
+            )
+            print(f"[RAG] 已加载 ChromaDB，包含 {vectordb._collection.count()} 个文档块")
+            return vectordb.as_retriever(search_kwargs={"k": 5})
+        
+        # 首次加载：读取所有 Markdown 文档
+        loader = DirectoryLoader(
+            corpus_dir,
+            glob="**/*.md",
+            loader_cls=TextLoader,
+            loader_kwargs={'encoding': 'utf-8'}
+        )
+        documents = loader.load()
+        print(f"[RAG] 加载了 {len(documents)} 个文档文件")
+        
+        # 分割文本：使用滑动窗口策略保留上下文连贯性
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=1000,      # 每块最多 1000 字符
+            chunk_overlap=200,    # 块间重叠 200 字符
+            separators=["\n## ", "\n### ", "\n\n", "\n", "。"]
+        )
+        chunks = splitter.split_documents(documents)
+        print(f"[RAG] 文本分割后得到 {len(chunks)} 个知识块")
+        
+        # 构建向量库
+        vectordb = Chroma.from_documents(
+            documents=chunks,
+            embedding=self.embeddings,
+            persist_directory=self.chroma_dir
+        )
+        vectordb.persist()
+        print(f"[RAG] ChromaDB 已持久化到 {self.chroma_dir}")
+        
+        return vectordb.as_retriever(search_kwargs={"k": 5})
+```
+
+#### 防阻塞的异步流式回答生成
+
+```python
+async def stream_answer(self, question: str, history: str = ""):
+    """
+    异步生成流式回答。关键点：
+    1. 将同步的向量检索卸载到后台线程，避免阻塞事件循环；
+    2. 逐字符流式推送给前端，提升用户体验；
+    3. 在回答中嵌入溯源标签，指示答案的知识来源。
+    """
+    try:
+        # 1. 异步调用向量检索（同步操作需隔离）
+        docs = await asyncio.to_thread(self.retriever.invoke, question)
+        
+        # 2. 从文档中提取上下文
+        context = "\n".join([doc.page_content for doc in docs]) if docs else ""
+        source_tags = [doc.metadata.get('source', 'unknown') for doc in docs]
+        
+        # 3. 构建结构化 Prompt 模板
+        prompt_template = ChatPromptTemplate.from_messages([
+            ("system", """你是一位仓颉编程语言的专业教师。请按照以下结构回答用户的问题：
+# 定义
+（用 1-2 句话定义或解释核心概念）
+
+# 原理
+（深入解释这个概念为什么这样工作）
+
+# 示例
+（给出一个或多个实际的仓颉代码示例）
+
+# 易错点
+（指出初学者常犯的错误）
+
+注意：所有代码示例必须是有效的仓颉语言代码。"""),
+            ("user", """基于以下参考资料，回答学生的问题。
+
+【参考资料】
+{context}
+
+【对话历史】
+{history}
+
+【学生问题】
+{question}""")
+        ])
+        
+        # 4. 构建 LLM 链
+        chain = prompt_template | self.llm
+        
+        # 5. 逐块流式调用 LLM
+        yield {"type": "start", "content": "系统已检索知识库，正在生成回答...\n\n"}
+        yield {"type": "sources", "content": f"来源文件: {', '.join(source_tags[:3])}"}
+        
+        async for chunk in chain.astream({
+            "context": context,
+            "history": history,
+            "question": question
+        }):
+            if chunk.content:
+                yield {"type": "content", "content": chunk.content}
+        
+        yield {"type": "end", "content": "\n\n---\n✓ 回答生成完毕"}
+        
+    except Exception as e:
+        yield {"type": "error", "content": f"生成失败: {str(e)}"}
+```
+
+## 智能学伴系统的功能实现 (3–5)：诊断与规划模块
+
+### 学情诊断模块 (3) 的多维度分析
+
+学情诊断模块是系统的"医疗部"。它不仅统计学生的学习量，更要深度洞察学生的薄弱环节，形成精准的学习画像。
+
+#### 学习画像的数据模型
+
+```python
+from sqlalchemy import Column, Integer, String, Float, Text, DateTime, ForeignKey
+from sqlalchemy.orm import declarative_base, relationship
+
+Base = declarative_base()
+
+class LearningProfile(Base):
+    """
+    学生学习画像表：记录每个学生的诊断结果与学习特征。
+    """
+    # 知识点掌握度评分 (0-100)
+    macro_mastery = Column(Float, default=50) 
+    concurrency_mastery = Column(Float, default=50)
+    stdlib_mastery = Column(Float, default=50)
+    type_system_mastery = Column(Float, default=50)
+    # 弱项集合（逗号分隔）
+    weak_topics = Column(Text, default="")  # e.g. "宏系统,并发控制"
+    strong_topics = Column(Text, default="")  # e.g. "基础语法,函数定义"
+    
+    # 学习行为统计
+    total_questions = Column(Integer, default=0)
+    total_practices = Column(Integer, default=0)
+    avg_practice_accuracy = Column(Float, default=0.0)
+    
+    # 最后诊断时间
+    last_diagnosed_at = Column(DateTime)
+    
+    # 诊断报告摘要
+    diagnosis_summary = Column(Text)
+
+class PracticeLog(Base):
+    """
+    练习记录表：记录每次练习的题目、答案、结果。
+    """
+    __tablename__ = 'practice_logs'
+    
+    id = Column(Integer, primary_key=True)
+    learner_id = Column(Integer, ForeignKey('learners.id'))
+    
+    topic = Column(String(100))  # 考察的知识点，如 "宏系统"
+    question = Column(Text)      # 题目内容
+    user_answer = Column(Text)   # 用户答案
+    correct_answer = Column(Text)  # 标准答案
+    is_correct = Column(Boolean, default=False)
+    score = Column(Float, default=0.0)  # 评分（0-100）
+    feedback = Column(Text)      # LLM 生成的反馈
+    
+    created_at = Column(DateTime, default=datetime.now)
+```
+
+#### 诊断引擎的核心算法
+
+```python
+@router.get("/diagnosis/{learner_id}")
+async def diagnose_student(learner_id: int, db: AsyncSession = Depends(get_db)):
+    """
+    基于学生的学习历史进行全面诊断。
+    """
+    # 1. 从数据库抽取相关统计
+    # 获取所有练习记录
+    practice_stmt = select(PracticeLog).where(
+        PracticeLog.learner_id == learner_id
+    )
+    practices_result = await db.execute(practice_stmt)
+    practices = practices_result.scalars().all()
+    
+    # 按知识点分组计算准确率
+    topic_accuracy = {}
+    for practice in practices:
+        if practice.topic not in topic_accuracy:
+            topic_accuracy[practice.topic] = {"correct": 0, "total": 0}
+        topic_accuracy[practice.topic]["total"] += 1
+        if practice.is_correct:
+            topic_accuracy[practice.topic]["correct"] += 1
+    
+    # 计算每个知识点的掌握度 (0-100)
+    topic_mastery = {}
+    weak_topics = []
+    strong_topics = []
+    
+    for topic, stats in topic_accuracy.items():
+        mastery = (stats["correct"] / stats["total"]) * 100 if stats["total"] > 0 else 0
+        topic_mastery[topic] = mastery
+        
+        if mastery < 60:
+            weak_topics.append(topic)
+        elif mastery >= 80:
+            strong_topics.append(topic)
+    
+    # 2. 获取或创建学习画像
+    profile_stmt = select(LearningProfile).where(
+        LearningProfile.learner_id == learner_id
+    )
+    profile_result = await db.execute(profile_stmt)
+    profile = profile_result.scalar_one_or_none()
+    
+    if not profile:
+        profile = LearningProfile(learner_id=learner_id)
+        db.add(profile)
+    
+    # 3. 更新掌握度评分
+    if "宏系统" in topic_mastery:
+        profile.macro_mastery = topic_mastery["宏系统"]
+    if "并发编程" in topic_mastery:
+        profile.concurrency_mastery = topic_mastery["并发编程"]
+    if "标准库" in topic_mastery:
+        profile.stdlib_mastery = topic_mastery["标准库"]
+    
+    profile.weak_topics = ",".join(weak_topics)
+    profile.strong_topics = ",".join(strong_topics)
+    profile.total_practices = len(practices)
+    profile.avg_practice_accuracy = sum(p.is_correct for p in practices) / len(practices) * 100 if practices else 0
+    
+    # 4. 生成诊断报告（通过 LLM）
+    diagnosis_prompt = f"""基于以下学生学习数据，生成一份简短诊断报告（200字以内）：
+
+掌握很好的知识点: {profile.strong_topics}
+需要加强的知识点: {profile.weak_topics}
+平均准确率: {profile.avg_practice_accuracy:.1f}%
+完成练习数: {profile.total_practices}
+
+请用教师的口吻，指出学生的学习优势与改进方向。"""
+    
+    diagnosis_text = await asyncio.to_thread(
+        rag_service.llm.invoke,
+        diagnosis_prompt
+    )
+    profile.diagnosis_summary = diagnosis_text.content
+    profile.last_diagnosed_at = datetime.now()
+    
+    await db.commit()
+    
+    # 5. 返回诊断结果
+    return {
+        "learner_id": learner_id,
+        "strong_topics": strong_topics,
+        "weak_topics": weak_topics,
+        "mastery_scores": topic_mastery,
+        "avg_accuracy": profile.avg_practice_accuracy,
+        "diagnosis_report": profile.diagnosis_summary
+    }
+```
+
+### 学习计划模块 (5) 的自动规划
+
+基于诊断结果，系统自动生成个性化的学习计划，将抽象的"弱项"转化为具体的周计划与日任务。
+
+```python
+class PlanService:
+    async def generate_learning_plan(
+        self,
+        learner_id: int,
+        diagnosis: dict,
+        duration_days: int = 7,
+        db: AsyncSession = None
+    ) -> dict:
+        """
+        根据诊断结果生成个性化学习计划。
+        """
+        weak_topics = diagnosis.get("weak_topics", [])
+        
+        if not weak_topics:
+            return {"message": "学生学习状态良好，无需制定计划"}
+        
+        # 1. 用 LLM 制定计划
+        plan_prompt = f"""作为教学规划师，为一名仓颉编程初学者制定 {duration_days} 天的学习计划。
+
+需要加强的知识点: {", ".join(weak_topics)}
+当前平均准确率: {diagnosis.get("avg_accuracy", 0):.1f}%
+
+请生成一份包含以下内容的计划：
+- 每日学习重点（按难度递进）
+- 建议完成的练习数量
+- 每日预计学习时间
+- 周末复习重点
+
+格式：JSON，包含 "daily_plans" 数组。"""
+        
+        plan_response = await asyncio.to_thread(
+            rag_service.llm.invoke,
+            plan_prompt
+        )
+        
+        plan_content = plan_response.content
+        
+        # 2. 解析并存储计划
+        try:
+            import json
+            # 尝试从 LLM 输出中提取 JSON
+            json_start = plan_content.find('{')
+            json_end = plan_content.rfind('}') + 1
+            plan_json = json.loads(plan_content[json_start:json_end])
+        except:
+            plan_json = {"raw_plan": plan_content}
+        
+        # 3. 存入数据库
+        .........
+```
+
+## 智能学伴系统的功能实现 (4)：练习与评价模块
+
+### 基于诊断的动态练习生成
+
+练习生成模块不是随机出题，而是精准针对学生的薄弱环节进行靶向式出题。
+
+```python
+@router.post("/practice/generate")
+async def generate_practice(request: PracticeRequest, db: AsyncSession = Depends(get_db)):
+    """根据主题生成练习题（只出题不给答案的阶段）"""
+    prompt = f"请针对仓颉编程语言中的【{request.topic}】知识点，生成一道单项选择题和一道简答题。要求：只给出题目，绝对不要给出答案和解析。"
+    response = rag_service.llm.invoke(prompt)
+    question_content = response.content
+
+    # 记录这道题目到数据库
+    practice_log = PracticeLog(
+        learner_id=request.learner_id,
+        topic=request.topic,
+        question_content=question_content,
+        user_answer="",
+        is_correct=0,
+        feedback=""
+    )
+    db.add(practice_log)
+    await db.commit()
+    await db.refresh(practice_log)
+
+    return {
+        "log_id": practice_log.id,
+        "reply": question_content,
+        "type": "Practice"
+    }
+
+@router.post("/practice/submit")
+async def submit_practice(request: SubmitPracticeRequest, db: AsyncSession = Depends(get_db)):
+    """提交答案，获取反馈并在数据库中落盘"""
+    log = await db.get(PracticeLog, request.log_id)
+    if not log:
+         return {"error": "题目记录不存在"}
+    
+    prompt = f"""以下是学生针对前述题目的回答，请给出评分和详细分析。
+【题目】 :
+{log.question_content}
+【学生答案】 :
+{request.user_answer}
+
+请提供 :
+1. 判定对错（或得分）
+2. 详细解析
+3. 改进建议
+"""
+    response = rag_service.llm.invoke(prompt)
+    feedback = response.content
+    return {
+        "reply": feedback,
+        "type": "Feedback"
+    }
+```
+
+### 代码沙箱验证
+
+即使本地未安装仓颉 SDK，学习者也可以通过在线代码沙箱体验仓颉语言。
+
+```python
+import subprocess
+import tempfile
+import os
+import asyncio
+import shutil
+import psutil
+
+class CangjieSandbox:
+    def __init__(self, timeout: int = 5):
+        self.timeout = timeout
+        self.cjc_path = shutil.which("cjc")
+        
+        # 使用环境变量定位仓颉 SDK，避免暴露具体机器路径
+        cangjie_home = os.getenv("CANGJIE_HOME", "")
+        self.dll_dirs = [
+            os.path.join(cangjie_home, "runtime", "lib", "<platform>"),
+            os.path.join(cangjie_home, "third_party", "llvm", "bin"),
+        ]
+        
+    async def execute(self, code: str) -> dict:
+        if not self.cjc_path:
+            return {
+                "status": "error", 
+                "error_type": "Environment Error",
+                "output": "找不到 cjc 编译器"
+            }
+
+        temp_dir = tempfile.mkdtemp()
+        file_path = os.path.join(temp_dir, "main.cj")
+        out_path = os.path.join(temp_dir, "main")
+        
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(code)
+
+        try:
+            # ========== 复制所有 DLL 到临时目录 ==========
+            copied_dlls = set()
+            for dll_dir in self.dll_dirs:
+                if os.path.exists(dll_dir):
+                    for item in os.listdir(dll_dir):
+                        if item.endswith('.dll') or item.endswith('.so'):
+                            src = os.path.join(dll_dir, item)
+                            dst = os.path.join(temp_dir, item)
+                            if item not in copied_dlls:
+                                shutil.copy2(src, dst)
+                                copied_dlls.add(item)
+
+            # 编译
+            def compile_code():
+                return subprocess.run(
+                    [self.cjc_path, file_path, "-o", out_path],
+                    capture_output=True,
+                    text=True,
+                    cwd=temp_dir,
+                    encoding="utf-8",
+                    errors="ignore"
+                )
+
+            compile_result = await asyncio.wait_for(
+                asyncio.to_thread(compile_code),
+                timeout=self.timeout
+            )
+
+            if compile_result.returncode != 0:
+                return {
+                    "status": "error",
+                    "error_type": "Compile Error",
+                    "output": compile_result.stderr or compile_result.stdout
+                }
+
+            if not os.path.exists(out_path):
+                files = os.listdir(temp_dir)
+                return {
+                    "status": "error",
+                    "error_type": "Execute Error",
+                    "output": f"找不到可执行文件\n目录内容: {files}"
+                }
+
+            # 运行（隐藏弹窗）
+            def run_code():
+                CREATE_NO_WINDOW = 0x08000000
+                return subprocess.run(
+                    [out_path],
+                    capture_output=True,
+                    text=True,
+                    cwd=temp_dir,
+                    encoding="utf-8",
+                    errors="ignore",
+                    creationflags=CREATE_NO_WINDOW
+                )
+
+            run_result = await asyncio.wait_for(
+                asyncio.to_thread(run_code),
+                timeout=self.timeout
+            )
+
+            if run_result.returncode != 0:
+                return {
+                    "status": "error",
+                    "error_type": "Runtime Error",
+                    "output": run_result.stderr
+                }
+
+            return {
+                "status": "success",
+                "output": run_result.stdout
+            }
+
+        except asyncio.TimeoutError:
+            return {
+                "status": "error",
+                "error_type": "Timeout Error",
+                "output": f"执行超时（>{self.timeout}秒）"
+            }
+        except Exception as e:
+            import traceback
+            return {
+                "status": "error",
+                "error_type": "System Error",
+                "output": f"{type(e).__name__}: {str(e)}\n{traceback.format_exc()}"
+            }
+        finally:
+            # 清理残留进程和目录
+            self._kill_processes_in_dir(temp_dir)
+            await asyncio.sleep(0.3)
+            try:
+                shutil.rmtree(temp_dir, ignore_errors=True)
+            except:
+                pass
+
+    def _kill_processes_in_dir(self, directory: str):
+        for proc in psutil.process_iter(['pid', 'name', 'exe']):
+            try:
+                exe = proc.info.get('exe')
+                if exe and exe.startswith(directory):
+                    proc.kill()
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
+```
+
+## 智能学伴系统的功能实现 (6)：学习日志持久化与热力图
+
+### 日结缓存表的设计与优化策略
+
+为避免前端查询热力图时重复生成海量历史总结，系统引入了 `DailySummary` 缓存表。
+
+```python
+@router.get("/daily/{learner_id}")
+async def get_daily_summary(learner_id: int, db: AsyncSession = Depends(get_db)):
+    # 1. 日期定义
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    yesterday_str = (datetime.now()-timedelta(1)).strftime("%Y-%m-%d")
+
+    # 2. 补全 昨日总结（数据库无则自动生成并入库）
+    yest_summary = await db.scalar(select(DailySummary).where(
+        DailySummary.learner_id==learner_id, DailySummary.date_str==yesterday_str))
+    
+    if not yest_summary:
+        # 查询昨日聊天/练习数据 → LLM生成总结 → 存入数据库
+        chats = 查询昨日聊天记录()
+        pracs = 查询昨日练习记录()
+        summary = LLM生成总结(拼接学习记录)
+        db.add(DailySummary(学习者标识, 日期, 总结, 统计数))
+
+    # 3. 查询所有历史归档总结
+    history_summaries = await db.scalars(select(DailySummary).where(
+        DailySummary.learner_id==learner_id).order_by(desc(DailySummary.date_str)))
+
+    # 4. 实时生成今日总结（不入库，仅展示）
+    today_data = 查询今日聊天+练习记录
+    today_summary = LLM实时总结(today_data)
+
+    await db.commit()
+
+    # 5. 组装返回：统计数据 + 时间线
+    return {
+        "stats": 总提问数/总做题数/正确率,
+        "timeline": [今日实时, ...历史总结]
+    }
+```
+
+## 基于检索增强生成 (RAG) 的仓颉知识库系统
+
+系统采用经典三层 RAG 架构，针对仓颉技术文档的 Markdown 结构化特征，设计了标题层级感知分割与代码块保护机制，并引入交叉编码器重排序 (Cross-Encoder Reranker) 与相关性阈值过滤，以抑制大语言模型的幻觉问题。语料构建参考并致谢开源项目 [CangjieCorpus](https://github.com/Cangjie-Pub/CangjieCorpus)。
+
+<figure>
+  <img
+    src="/images/projects/cangjieagent/rag-flow.svg"
+    alt="仓颉知识库 RAG 系统离线构建与在线查询流程图"
+    loading="lazy"
+  />
+  <figcaption>RAG 系统数据流与查询处理流程</figcaption>
+</figure>
+
+### 文档处理：标题层级感知分割 + Chunk 二次分割
+
+针对仓颉 Markdown 文档的结构特征，设计专用加载器，以 `#` / `##` / `###` 为边界切分，确保每个 Chunk 语义单一。同时识别代码块标记，在二次分割时保持代码片段完整性。
+
+```python
+# ==================== 自定义Markdown加载器 ====================
+class CangjieMarkdownLoader:
+    """
+    专为 CangjieCorpus 优化的 Markdown 加载器
+
+    特性：
+    - 保留标题层级结构
+    - 识别代码块并标记
+    - 提取文件元数据（来源目录、文件名）
+    - 处理中文编码
+    """
+
+    def __init__(self, file_path: str):
+        self.file_path = Path(file_path)
+        self.content = ""
+
+    def load(self) -> List[Document]:
+        """加载并解析Markdown文件"""
+        try:
+            with open(self.file_path, "r", encoding="utf-8") as f:
+                self.content = f.read()
+        except UnicodeDecodeError:
+            with open(self.file_path, "r", encoding="gbk") as f:
+                self.content = f.read()
+
+        # 提取元数据
+        relative_path = self.file_path.relative_to(CORPUS_DIR)
+        doc_type = relative_path.parts[0] if relative_path.parts else "unknown"
+
+        metadata = {
+            "source": str(self.file_path),
+            "filename": self.file_path.name,
+            "doc_type": doc_type,  # extra / libs / manual / tools
+            "relative_path": str(relative_path),
+            "file_size": len(self.content),
+            "load_time": datetime.now().isoformat(),
+        }
+
+        # 按标题层级分割文档
+        chunks = self._split_by_headers()
+
+        documents = []
+        for chunk in chunks:
+            chunk_meta = metadata.copy()
+            chunk_meta["header_level"] = chunk["level"]
+            chunk_meta["header_title"] = chunk["title"]
+            chunk_meta["has_code"] = chunk["has_code"]
+            chunk_meta["chunk_hash"] = hashlib.md5(chunk["content"].encode()).hexdigest()[:8]
+
+            documents.append(Document(
+                page_content=chunk["content"],
+                metadata=chunk_meta
+            ))
+
+        return documents
+
+    def _split_by_headers(self) -> List[Dict]:
+        """按Markdown标题层级分割内容"""
+        lines = self.content.split("\n")
+        chunks = []
+        current_chunk = {
+            "level": 0,
+            "title": self.file_path.stem,
+            "content": "",
+            "has_code": False
+        }
+
+        for line in lines:
+            stripped = line.strip()
+
+            # 检测标题
+            if stripped.startswith("# "):
+                # 保存当前chunk
+                if current_chunk["content"].strip():
+                    chunks.append(current_chunk.copy())
+                current_chunk = {
+                    "level": 1,
+                    "title": stripped[2:].strip(),
+                    "content": line + "\n",
+                    "has_code": False
+                }
+            elif stripped.startswith("## "):
+                if current_chunk["content"].strip():
+                    chunks.append(current_chunk.copy())
+                current_chunk = {
+                    "level": 2,
+                    "title": stripped[3:].strip(),
+                    "content": line + "\n",
+                    "has_code": False
+                }
+            elif stripped.startswith("### "):
+                if current_chunk["content"].strip():
+                    chunks.append(current_chunk.copy())
+                current_chunk = {
+                    "level": 3,
+                    "title": stripped[4:].strip(),
+                    "content": line + "\n",
+                    "has_code": False
+                }
+            else:
+                current_chunk["content"] += line + "\n"
+                if stripped.startswith("```"):
+                    current_chunk["has_code"] = True
+
+        # 保存最后一个chunk
+        if current_chunk["content"].strip():
+            chunks.append(current_chunk)
+
+        return chunks
+
+# ==================== 智能文本分割器 ====================
+class CangjieTextSplitter:
+    """
+    专为技术文档设计的文本分割器
+
+    策略：
+    - 优先按标题分割（已在上一步完成）
+    - 对过大的chunk进行二次分割
+    - 保留代码块完整性
+    - 中文友好的分隔符
+    """
+
+    def __init__(self, chunk_size: int = 512, chunk_overlap: int = 50):
+        self.chunk_size = chunk_size
+        self.chunk_overlap = chunk_overlap
+
+        # 中文友好的分隔符（按优先级）
+        self.separators = [
+            "\n## ",      # 二级标题
+            "\n### ",     # 三级标题
+            "\n#### ",    # 四级标题
+            "\n\n",      # 空行
+            "\n",         # 换行
+            "。",          # 中文句号
+            "；",          # 中文分号
+            "！",          # 中文感叹号
+            "？",          # 中文问号
+            " ",           # 空格
+            "",            # 字符级别
+        ]
+
+        self.splitter = RecursiveCharacterTextSplitter(
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            separators=self.separators,
+            length_function=len,
+            is_separator_regex=False,
+        )
+
+    def split_documents(self, documents: List[Document]) -> List[Document]:
+        """分割文档，保留元数据"""
+        result = []
+
+        for doc in documents:
+            content = doc.page_content
+
+            # 如果内容在限制内，直接保留
+            if len(content) <= self.chunk_size:
+                result.append(doc)
+                continue
+
+            # 尝试保持代码块完整
+            if doc.metadata.get("has_code", False):
+                chunks = self._split_preserve_code(content, doc.metadata)
+            else:
+                chunks = self.splitter.split_text(content)
+
+            for i, chunk_text in enumerate(chunks):
+                if not chunk_text.strip():
+                    continue
+
+                meta = doc.metadata.copy()
+                meta["split_index"] = i
+                meta["split_total"] = len(chunks)
+                meta["chunk_hash"] = hashlib.md5(chunk_text.encode()).hexdigest()[:8]
+
+                result.append(Document(
+                    page_content=chunk_text,
+                    metadata=meta
+                ))
+
+        return result
+
+    def _split_preserve_code(self, content: str, metadata: Dict) -> List[str]:
+        """尽量保持代码块完整的分割"""
+        lines = content.split("\n")
+        chunks = []
+        current = []
+        current_len = 0
+        in_code_block = False
+        code_buffer = []
+
+        for line in lines:
+            stripped = line.strip()
+
+            # 代码块边界
+            if stripped.startswith("```"):
+                if in_code_block:
+                    # 结束代码块
+                    code_buffer.append(line)
+                    code_text = "\n".join(code_buffer)
+
+                    # 如果当前chunk能容纳整个代码块
+                    if current_len + len(code_text) <= self.chunk_size:
+                        current.extend(code_buffer)
+                        current_len += len(code_text)
+                    else:
+                        # 保存当前chunk，代码块单独成chunk
+                        if current:
+                            chunks.append("\n".join(current))
+                        chunks.append(code_text)
+                        current = []
+                        current_len = 0
+
+                    code_buffer = []
+                    in_code_block = False
+                else:
+                    # 开始代码块
+                    in_code_block = True
+                    code_buffer = [line]
+                continue
+
+            if in_code_block:
+                code_buffer.append(line)
+                continue
+
+            # 普通文本
+            line_len = len(line) + 1  # +1 for newline
+
+            if current_len + line_len > self.chunk_size and current:
+                chunks.append("\n".join(current))
+                # 保留重叠部分
+                overlap_start = max(0, len(current) - self.chunk_overlap // 10)
+                current = current[overlap_start:]
+                current_len = sum(len(l) + 1 for l in current)
+
+            current.append(line)
+            current_len += line_len
+
+        # 处理剩余内容
+        if code_buffer:
+            code_text = "\n".join(code_buffer)
+            if current_len + len(code_text) <= self.chunk_size:
+                current.extend(code_buffer)
+            else:
+                if current:
+                    chunks.append("\n".join(current))
+                chunks.append(code_text)
+        elif current:
+            chunks.append("\n".join(current))
+
+        return chunks
+```
+
+提取的元数据包括 `doc_type` (libs/manual/tools/extra)、`header_level`、`header_title` 与 `has_code`，为后续检索过滤与结果展示提供结构化信息。
+
+### 向量索引：HNSW + Metadata 过滤
+
+采用 `BAAI/bge-m3` 作为 Embedding 模型，构建阶段启用 GPU 加速与归一化，索引采用 ChromaDB 内建 HNSW 近似最近邻算法，距离度量设为 Cosine。
+
+```python
+db = Chroma.from_documents(
+    documents=batch,
+    embedding=embeddings,
+    persist_directory=str(PERSIST_DIR),
+    collection_metadata={
+        "hnsw:space": "cosine",
+        "hnsw:construction_ef": 128,
+        "hnsw:search_ef": 64,
+    }
+)
+```
+
+检索阶段支持基于 `doc_type` 的 Metadata 预过滤，例如仅检索 `manual` 目录下的用户指南，避免 AST 底层实现文档污染学习类查询结果。
+
+### 重排序与相关性阈值过滤
+
+初筛召回 Top-10 后，引入 `BAAI/bge-reranker-large` 进行精排。该 Cross-Encoder 将 Query 与 Document 拼接编码，输出相关性分数。随后设置阈值 `score > 0.3`：若所有片段均低于阈值，则判定知识库无相关内容，系统回退至大模型通用知识，从而抑制无关检索导致的幻觉。
+
+```python
+def _retrieve_with_rerank(self, question: str, doc_type: str = None):
+    # 1. 向量初筛 (Top-10)
+    docs = self.vectorstore.similarity_search(
+        question, k=10, filter={"doc_type": doc_type})
+
+    # 2. Cross-Encoder 重排序
+    pairs = [[question, doc.page_content] for doc in docs]
+    scores = self.reranker.predict(pairs)
+    scored = sorted(zip(docs, scores), key=lambda x: x[1], reverse=True)
+
+    # 3. 阈值过滤 (关键防幻觉机制)
+    THRESHOLD = 0.3
+    filtered = [(d, s) for d, s in scored if s > THRESHOLD]
+
+    if not filtered:
+        return "", [], "【回答来源：大模型通用知识】"
+
+    return self._format_context(filtered[:5])
+```
+
+### 生成层：结构化 Prompt 与防幻觉约束
+
+生成阶段采用结构化 Prompt，强制要求模型按 “定义 → 原理与特点 → 示例代码 → 易错点与提示” 四段式输出。关键约束在于：若参考知识中无完整代码，必须明确声明，禁止基于训练数据编造仓颉语法。
+
+```python
+("system", """你是一个专业的仓颉编程语言导师。
+
+【绝对规则】
+1. 你只能基于【参考知识】中的内容回答。
+2. 如果参考知识中没有完整代码实现，必须明确说：
+   "知识库中暂无相关示例"。
+3. 禁止基于自身训练数据编造仓颉代码示例。
+4. 禁止引用未在【参考知识】中出现的代码片段。
+
+回答结构：
+### 1. 定义
+### 2. 原理与特点  
+### 3. 示例代码（仅来自参考知识，无则写"暂无示例"）
+### 4. 易错点与提示
+
+【参考知识】：
+{context}
+""")
+```
+
+上下文中的每条参考片段均标注来源 (`[类型] 文件名 - 标题`) 与相关性分数，使模型能够判断信息可信度，并在输出中附带参考来源列表，增强回答的可解释性。
+
+## 创新点、局限性与优化方向
+
+### 创新点
+
+#### 创新点：仓颉编程沙箱
+
+该沙箱通过服务端仓颉 SDK 完成真实编译与运行验证，而不是让 AI 模型猜测代码是否正确。初学者无需先完成本地 SDK 安装和环境配置，即可在接近真实开发环境的条件下验证代码。
+
+### 项目局限性
+
+#### 局限 1：LLM 自然语言批卷的低可靠性
+
+虽然沙箱能验证代码是否运行，但对于“代码质量”与“算法优化”的评判完全依靠 LLM 的感性判断：
+
+- **评分不稳定**：同一份代码多次评判分数可能不同（temperature 随机性）；
+
+- **遗漏细节**：逻辑错误但能通过样例的代码被误判为正确；
+
+- **标准缺失**：缺乏仓颉官方的代码风格规范作为评判基准。
+
+#### 局限 2：基座模型对仓颉语言的认知空白
+
+通义千问等通用大模型的训练数据截止于 2024 年中，而仓颉语言正式发布于 2024-2025 年，导致：
+
+- **语法规则缺失**：模型不理解仓颉的类型系统、所有权语义与泛型约束；
+
+- **API 记忆错误**：标准库函数签名频繁编造；
+
+- **复杂代码无法生成**：快排、链表等算法实现语法错误率接近 100%。
+
+RAG 只能提供参考资料，无法完全弥补模型“不会仓颉代码”的根本缺陷。
+
+### 前瞻性优化方向
+
+#### 优化 1：LoRA 微调 + 持续学习
+
+1.  利用系统积累的优质问答对与编译通过的代码，构建仓颉特定的指令微调数据集（目标规模 5–10 万条）；
+
+2.  选择 Qwen2.5-Coder-7B/14B 作为基座，注入秩为 `r = 64` 的低秩适配矩阵（QLoRA 4bit 量化，适配 RTX 4060 8GB 显存）；
+
+3.  形成“RAG + 微调模型”的混合架构：RAG 负责知识检索，微调模型负责代码生成与语法理解。
+
+#### 优化 2：AST 形式化验证与代码评审
+
+1.  在后端集成 tree-sitter 或手写 Cangjie 语法解析器，对用户代码进行抽象语法树分析；
+
+2.  提取圈复杂度、变量生命周期、内存安全模式等形式化指标；
+
+3.  将 AST 指标与自然语言共同输入 LLM，生成结构化的代码评审意见（替代当前的感性评分）。
+
+#### 优化 3：代码模板库与编译器反馈强化
+
+1.  预存常见算法（排序、树、图）的**经编译器验证的正确实现**到语料库；
+
+2.  对 LLM 生成的代码自动调用 `cjc` 编译验证，错误信息反馈给模型进行迭代修正（Compiler-Informed Self-Debugging）；
+
+3.  建立“生成 → 编译 → 纠错 → 再编译”的闭环，确保输出代码的语法正确性。
+
+#### 优化 4：多模态学习融合
+
+探索将仓颉程序的 AST 可视化图、控制流图等结构化表示与文本联合编码，构建图-文多模态 Embedding，进一步提升复杂代码结构的检索与理解能力。
