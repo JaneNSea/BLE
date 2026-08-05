@@ -22,8 +22,6 @@ repositories:
     stack: "Python · FastAPI · SQLAlchemy · LangChain · ChromaDB · Cangjie"
 ---
 
-import { withBase } from '../../utils/url';
-
 ## 项目概述
 
 仓颉编程智能学伴系统面向仓颉语言初学者，重点解决通用大语言模型对新语言语法、标准库和编译错误理解不足的问题。系统以检索增强生成（RAG）为知识底座，将仓颉技术文档、标准库资料和代码示例接入问答链路，并结合真实编译代码沙箱完成练习验证。
@@ -31,7 +29,6 @@ import { withBase } from '../../utils/url';
 - **核心能力**：智能问答、知识检索、学情诊断、练习生成与反馈、个性化学习计划、学习过程记录、在线代码沙箱。
 - **后端技术栈**：FastAPI、SQLAlchemy、LangChain、ChromaDB、Qwen、BGE-M3、BGE Reranker。
 - **代码仓库**：[GitCode · cangjie_study_partner](https://gitcode.com/JaneNSea/cangjie_study_partner)
-- **隐私说明**：本文已移除作者姓名、组织信息、具体机器路径及其他可识别个人信息。
 
 ## 立项原因与项目背景深度剖析
 
@@ -88,7 +85,7 @@ import { withBase } from '../../utils/url';
 
 <figure>
   <img
-    src={withBase('/images/projects/cangjieagent/system-architecture.svg')}
+    src="/BLE/images/projects/cangjieagent/system-architecture.svg"
     alt="仓颉编程智能学伴系统七模块融合拓扑架构图"
     loading="lazy"
   />
@@ -771,7 +768,7 @@ async def get_daily_summary(learner_id: int, db: AsyncSession = Depends(get_db))
 
 <figure>
   <img
-    src={withBase('/images/projects/cangjieagent/rag-flow.svg')}
+    src="/BLE/images/projects/cangjieagent/rag-flow.svg"
     alt="仓颉知识库 RAG 系统离线构建与在线查询流程图"
     loading="lazy"
   />
