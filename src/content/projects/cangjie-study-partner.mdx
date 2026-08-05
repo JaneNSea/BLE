@@ -12,11 +12,17 @@ type: "personal"
 status: "completed"
 role: "系统设计与后端实现"
 year: 2026
+authors:
+  - name: "JaneNSea"
+    role: "独立作者 · 全栈开发"
+    avatar: "/avatar.jpg"
 repositories:
   - label: "项目代码仓库"
     url: "https://gitcode.com/JaneNSea/cangjie_study_partner"
     stack: "Python · FastAPI · SQLAlchemy · LangChain · ChromaDB · Cangjie"
 ---
+
+import { withBase } from '../../utils/url';
 
 ## 项目概述
 
@@ -82,7 +88,7 @@ repositories:
 
 <figure>
   <img
-    src="/images/projects/cangjieagent/system-architecture.svg"
+    src={withBase('/images/projects/cangjieagent/system-architecture.svg')}
     alt="仓颉编程智能学伴系统七模块融合拓扑架构图"
     loading="lazy"
   />
@@ -765,7 +771,7 @@ async def get_daily_summary(learner_id: int, db: AsyncSession = Depends(get_db))
 
 <figure>
   <img
-    src="/images/projects/cangjieagent/rag-flow.svg"
+    src={withBase('/images/projects/cangjieagent/rag-flow.svg')}
     alt="仓颉知识库 RAG 系统离线构建与在线查询流程图"
     loading="lazy"
   />
