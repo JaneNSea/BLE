@@ -1,0 +1,318 @@
+---
+title: "基于深度强化学习的柔性作业车间调度问题求解"
+summary: "将柔性作业车间调度构造过程建模为马尔可夫决策过程，使用复合动作、Transformer Actor-Critic、PPO 训练与多种子局部精炼求解 FJSP，并与传统模拟退火结果进行比较。"
+publishedAt: 2026-08-06
+publishedLabel: "2026 年 8 月"
+tags: ["柔性作业车间调度", "深度强化学习", "PPO", "Transformer", "Actor-Critic", "组合优化"]
+listingTags: ["优化算法", "深度学习"]
+cover: "/images/notes/optimization_method_DL/cover.png"
+authors:
+  - name: "JaneNSea"
+    role: "作者"
+    avatar: "/avatar.jpg"
+featured: false
+priority: 0
+draft: false
+readingMinutes: 20
+relatedProjects: []
+---
+
+import Tex from '../../components/content/Tex.astro';
+
+## 摘要 Abstract
+
+柔性作业车间调度问题（Flexible Job-shop Scheduling Problem，FJSP）需要同时决定每道工序的可选机器分配和各机器上的加工顺序，是典型的 NP-hard 组合优化问题。传统模拟退火、遗传算法和禁忌搜索能够在小规模算例上获得较好解，但其邻域设计和参数设定依赖人工经验，难以显式学习“状态—动作”之间的复杂结构。
+
+本文在传统启发式方法基础上进一步设计了一种深度强化学习版本：将 FJSP 构造过程建模为马尔可夫决策过程，采用复合动作 <Tex tex={String.raw`(\text{工件},\text{机器})`} /> 同时完成工序选择与机器分配；利用候选动作的工序特征、工件上下文和机器上下文构造异构特征，并通过 Transformer 式自注意力 Actor-Critic 网络对候选动作进行评分；训练阶段采用带裁剪目标的近端策略优化（PPO），推理阶段结合多次神经策略 rollout 与神经种子局部精炼。
+
+实验在 5 个测试用例上进行，最终 makespan 分别为 446、479、554、514 和 635，平均结果与传统模拟退火基线基本持平，并在 Instance 1 和 Instance 4 上取得更优结果。该版本的主要价值在于引入可学习的调度优先级、复合动作建模、价值函数基线和注意力机制，算法结构与理论深度相较传统模拟退火有显著提升。
+
+**关键词 Keywords**：柔性作业车间调度；深度强化学习；PPO；Transformer；Actor-Critic；组合优化
+
+
+## 1. 引言
+
+柔性作业车间调度问题是制造系统调度中的重要模型。与经典作业车间调度问题相比，FJSP 中同一道工序可以在多台候选机器上加工，加工时间随机器性能而变化，因此调度器不仅要确定各工件内部工序的加工顺序，还要在候选机器集合中选择实际加工机器。
+
+Brandimarte 较早将柔性车间中的路径选择与机器排序结合起来，并采用禁忌搜索进行求解（参考文献 1）。之后，许多工作围绕混合启发式、局部搜索和元启发式展开。近年来，深度强化学习逐渐用于组合优化和调度决策。Zhang 等将作业车间状态表示为析取图，并通过图神经网络学习派工规则（参考文献 4）；Song 等进一步面向 FJSP 构造异构图神经网络，并将工序选择与机器分配合并为复合动作（参考文献 5）。这些研究表明，深度学习模型能够从状态特征中自动提取调度优先级，从而减少手工规则设计。
+
+本文研究的问题为：给定 <Tex tex={String.raw`n`} /> 个工件和 <Tex tex={String.raw`m`} /> 台机器，工件 <Tex tex={String.raw`J_i`} /> 包含 <Tex tex={String.raw`q_i`} /> 道工序 <Tex tex={String.raw`O_{i1},O_{i2},\ldots,O_{iq_i}`} />；每道工序 <Tex tex={String.raw`O_{ij}`} /> 的候选机器集合为 <Tex tex={String.raw`\mathcal{M}_{ij}`} />，若选择机器 <Tex tex={String.raw`k\in\mathcal{M}_{ij}`} />，加工时间为 <Tex tex={String.raw`p_{ijk}`} />。调度目标是最小化所有工件的最大完工时间，即 makespan。该问题需要同时满足工件工序先后约束、机器互斥约束和不可中断加工约束。
+
+令 <Tex tex={String.raw`x_{ijk}\in\{0,1\}`} /> 表示工序 <Tex tex={String.raw`O_{ij}`} /> 是否由机器 <Tex tex={String.raw`k`} /> 加工，<Tex tex={String.raw`S_{ij}`} /> 和 <Tex tex={String.raw`C_{ij}`} /> 分别表示开始时间与完工时间，<Tex tex={String.raw`C_{\max}`} /> 表示总完工时间。机器冲突用二元变量 <Tex tex={String.raw`y_{ij,i'j',k}`} /> 表示同一机器上两道工序的先后顺序，则混合整数规划模型为：
+
+<Tex block tex={String.raw`\begin{aligned}
+\min \quad & C_{\max} \\
+\text{s.t.}\quad
+& \sum_{k\in\mathcal{M}_{ij}} x_{ijk}=1, && \forall i,j, \\
+& C_{ij}=S_{ij}+\sum_{k\in\mathcal{M}_{ij}}p_{ijk}x_{ijk}, && \forall i,j, \\
+& C_{ij}\le S_{i,j+1}, && \forall i,\ j=1,\ldots,q_i-1, \\
+& S_{ij}\ge C_{i'j'}-M(1-y_{ij,i'j',k})-M(2-x_{ijk}-x_{i'j'k}), \\
+& S_{i'j'}\ge C_{ij}-My_{ij,i'j',k}-M(2-x_{ijk}-x_{i'j'k}), \\
+& C_{\max}\ge C_{i q_i}, && \forall i, \\
+& x_{ijk}\in\{0,1\},\quad y_{ij,i'j',k}\in\{0,1\}.
+\end{aligned}`} />
+
+其中，<Tex tex={String.raw`M`} /> 为足够大的常数。上述模型是混合整数规划形式，精确求解在规模增大时计算成本很高。因此，本文采用深度强化学习与局部搜索结合的方法，从可学习派工规则和随机搜索两方面提高求解能力。
+
+本文后续组织如下：第 2 节介绍深度强化学习算法设计，包括 MDP 建模、特征工程、神经网络结构、PPO 训练和局部精炼；第 3 节给出实验设置、结果与参数分析；第 4 节总结本文工作并讨论不足。
+
+## 2. 算法设计
+
+### 2.1 总体思路
+
+传统模拟退火将一个完整调度解编码为工序序列和机器向量，通过交换、插入、逆序和机器变更等邻域进行搜索。本文的深度学习版本把“构造一个完整调度方案”视为序贯决策过程：每一步在当前可加工的下一道工序中选择一个工件，并为该工序选择一台可兼容机器。该选择被定义为复合动作 <Tex tex={String.raw`a_t=(i,k)`} />。
+
+完成动作后，使用最早空隙插入规则将工序插入到对应机器时间轴中，从而得到新的调度状态。与单纯随机邻域搜索相比，该方法的关键区别在于：动作优先级由神经网络根据状态自适应给出，而不是由固定启发式规则或手写概率决定。
+
+训练阶段先解析算例并构造状态特征，再使用 Actor-Critic 网络采样完整调度轨迹，利用 PPO 更新策略参数；推理阶段进行多次策略 rollout，保留若干优质神经种子，并对这些种子执行局部精炼，最终输出 makespan、调度表和甘特图。
+
+![DRL-Hybrid FJSP 求解流程](/BLE/images/notes/optimization_method_DL/workflow.png)
+
+### 2.2 马尔可夫决策过程建模
+
+将 FJSP 构造过程定义为 MDP <Tex tex={String.raw`(\mathcal{S},\mathcal{A},P,r)`} />：
+
+- **状态 <Tex tex={String.raw`s_t`} />**：包含每个工件下一道待加工工序、各工件最早就绪时间、各机器已占用区间、机器负载、当前 makespan 以及候选动作集合。
+- **动作 <Tex tex={String.raw`a_t=(i,k)`} />**：选择工件 <Tex tex={String.raw`J_i`} /> 的下一道工序，并将其分配给候选机器 <Tex tex={String.raw`k\in\mathcal{M}_{i,o_i}`} />。
+- **转移 <Tex tex={String.raw`P`} />**：按最早空隙插入解码器确定该工序的开始与结束时间，然后更新工件就绪时间、机器占用区间和机器负载。
+- **奖励 <Tex tex={String.raw`r_t`} />**：采用 makespan 增量的负值：
+
+<Tex block tex={String.raw`r_t=-\frac{C^{(t)}_{\max}-C^{(t-1)}_{\max}}{H}`} />
+
+其中，<Tex tex={String.raw`H`} /> 为加工时间上界。这样整条轨迹的累计奖励与最终 makespan 负相关。
+
+这种建模方式与 Song 等在 FJSP 中使用复合动作的思想一致，即一次动作同时完成操作选择与机器分配（参考文献 5）。它避免了先选工序、再选机器所造成的两阶段误差传播，并能直接对可行候选对进行评分。
+
+### 2.3 状态特征与复合动作表示
+
+对每个候选动作 <Tex tex={String.raw`(i,k)`} />，代码构造三类特征：
+
+1. **工序—机器对特征**：工件编号、工序编号、机器编号、加工时间、该工序最短加工时间、相对加工时间、最早可开工时间、预计完工时间、当前 makespan、候选机器数量、剩余最短加工时间和剩余工序比例。
+2. **工件上下文特征**：工件就绪时间、当前工序位置、剩余工序数量、剩余最短加工负荷、当前工序最短加工时间以及是否为首道工序。
+3. **机器上下文特征**：机器最晚占用结束时间、累计负载、相对负载、已安排任务数、机器是否早于工件就绪以及机器时间轴长度。
+
+这些特征没有直接使用固定派工规则，而是把派工规则中常见的最短加工时间、剩余加工量、机器负载和最早完工时间转化为神经网络可学习的输入。与单一启发式规则相比，该表示可以让策略网络在不同状态下自适应地权衡加工时间、机器拥挤程度和工件后续负荷。
+
+### 2.4 Transformer Actor-Critic 网络
+
+本文采用的策略网络由三类特征编码器、Transformer Encoder、Actor 头和 Critic 头组成。三类输入特征分别经过 MLP 编码为同维嵌入，然后相加得到候选动作嵌入。所有候选动作嵌入构成一个变长序列，并输入 Transformer Encoder。
+
+自注意力机制由 Vaswani 等提出（参考文献 10），图注意力网络也证明了注意力机制适合处理图结构和邻接依赖（参考文献 11）。在 FJSP 中，不同候选动作之间存在竞争关系：同一工件的不同机器选择、不同工件对同一机器的争用、短工序与关键路径工序的优先级冲突等，都可以通过候选动作之间的注意力交互进行建模。
+
+![复合动作 Transformer Actor-Critic 网络结构](/BLE/images/notes/optimization_method_DL/architecture.png)
+
+网络输出包括两部分：
+
+- **Actor 头**：输出每个候选动作的 logit，并通过 softmax 得到策略 <Tex tex={String.raw`\pi_\theta(a_t\mid s_t)`} />。
+- **Critic 头**：对所有候选动作嵌入做池化，输出状态价值 <Tex tex={String.raw`V_\phi(s_t)`} />。
+
+价值函数用于降低策略梯度估计方差，这是 Actor-Critic 方法相较普通 REINFORCE 的重要改进（参考文献 12）。
+
+### 2.5 PPO 训练目标
+
+训练阶段采用近端策略优化（Proximal Policy Optimization，PPO）。PPO 通过裁剪重要性采样比率限制每次策略更新幅度，从而提高训练稳定性（参考文献 9）。
+
+设旧策略采样动作的概率为 <Tex tex={String.raw`\pi_{\theta_{\mathrm{old}}}(a_t\mid s_t)`} />，新旧策略比率为：
+
+<Tex block tex={String.raw`\rho_t(\theta)=\frac{\pi_{\theta}(a_t\mid s_t)}{\pi_{\theta_{\mathrm{old}}}(a_t\mid s_t)}`} />
+
+优势函数估计为：
+
+<Tex block tex={String.raw`\hat{A}_t=G_t-V_\phi(s_t)`} />
+
+其中，<Tex tex={String.raw`G_t`} /> 为从时刻 <Tex tex={String.raw`t`} /> 开始的折扣回报。PPO 的裁剪策略损失为：
+
+<Tex block tex={String.raw`L^{\mathrm{CLIP}}(\theta)=\mathbb{E}_t\left[\min\left(\rho_t(\theta)\hat{A}_t,\operatorname{clip}(\rho_t(\theta),1-\epsilon,1+\epsilon)\hat{A}_t\right)\right]`} />
+
+总损失函数为：
+
+<Tex block tex={String.raw`\mathcal{L}=-L^{\mathrm{CLIP}}+c_v\left(V_\phi(s_t)-G_t\right)^2-c_e\mathcal{H}\!\left(\pi_\theta(\cdot\mid s_t)\right)`} />
+
+其中，<Tex tex={String.raw`c_v`} /> 为价值损失权重，<Tex tex={String.raw`c_e`} /> 为熵正则权重，<Tex tex={String.raw`\mathcal{H}`} /> 用于鼓励探索。
+
+### 2.6 神经种子局部精炼
+
+由于测试算例数量较少，从头训练深度网络容易受到样本规模限制。为了在可复现实验中获得更可靠的调度质量，本文在推理阶段加入神经种子局部精炼。具体步骤如下：
+
+1. 由神经策略和若干基础规则生成多个完整可行解。
+2. 保留 makespan 最小的若干候选解作为种子。
+3. 对每个种子执行交换、插入、逆序和机器变更四类邻域搜索。
+4. 使用退火接受准则，保留一定的跳出局部最优能力。
+
+该设计不是回退到传统方法，而是将神经网络用于生成更高质量、更有结构的初始解集合。深度策略负责在构造阶段学习动作优先级，局部精炼负责在邻近解空间中修正神经策略可能出现的局部缺陷。
+
+类似的“学习模型 + 搜索增强”思想在神经组合优化中较常见，例如 Bello 等使用神经网络学习组合优化策略（参考文献 14），Kool 等使用注意力模型求解路径类问题（参考文献 15）。
+
+### 2.7 算法伪代码
+
+```text
+算法：Transformer-PPO-Local Search for FJSP
+
+输入：FJSP 算例集合 I、训练轮数 E、rollout 次数 R、局部搜索迭代数 L
+输出：最优调度方案、makespan、CSV 文件和甘特图
+
+1. 初始化 Actor-Critic 网络参数 θ、φ
+2. for episode = 1, ..., E do
+3.     随机选择一个算例 I ∈ 𝓘，初始化调度环境
+4.     while 仍有未安排工序 do
+5.         构造所有候选动作 (i, k) 的三类特征
+6.         由策略 πθ(a | s) 采样动作
+7.         使用最早空隙插入规则更新调度
+8.         记录奖励、动作概率和值函数
+9.     end while
+10.    轨迹结束后计算回报与优势
+11.    使用 PPO 裁剪目标、价值损失和熵正则更新网络
+12. end for
+13. for 每个测试算例 do
+14.    用训练后的策略进行 R 次随机 rollout，并加入若干启发式种子
+15.    按 makespan 选择前若干个种子，分别进行局部精炼
+16.    输出最优调度方案、makespan、CSV 文件和甘特图
+17. end for
+```
+
+### 2.8 复杂度分析
+
+设总工序数为 <Tex tex={String.raw`T=\sum_i q_i`} />，某一步候选动作数为 <Tex tex={String.raw`A_t`} />，网络隐藏维度为 <Tex tex={String.raw`d`} />，Transformer 层数为 <Tex tex={String.raw`L`} />。
+
+每一步特征构造复杂度约为 <Tex tex={String.raw`O(A_t)`} />；MLP 编码复杂度为 <Tex tex={String.raw`O(A_t d^2)`} />；自注意力复杂度为 <Tex tex={String.raw`O(LA_t^2d)`} />。因此，构造一个完整调度的神经推理复杂度为：
+
+<Tex block tex={String.raw`O\!\left(\sum_{t=1}^{T}\left(A_t d^2+LA_t^2d\right)\right)`} />
+
+在本实验中，每个工件每次只暴露下一道工序，因此 <Tex tex={String.raw`A_t`} /> 的上界约为当前未完成工件数乘以候选机器数，显著小于所有未完成工序与机器的笛卡尔积。
+
+局部精炼部分每次邻域变换后需要重新解码一个完整解。若机器时间轴平均已有 <Tex tex={String.raw`\bar{g}`} /> 个区间，则最早空隙插入解码复杂度约为 <Tex tex={String.raw`O(T\bar{g})`} />，局部搜索 <Tex tex={String.raw`R_l`} /> 次迭代复杂度约为 <Tex tex={String.raw`O(R_lT\bar{g})`} />。空间复杂度主要来自候选动作嵌入和机器时间轴，约为 <Tex tex={String.raw`O(A_td+T)`} />。
+
+## 3. 实验
+
+### 3.1 实验设置
+
+实验使用 5 个 FJSP 测试用例，每个用例包含 5 至 8 个工件、7 台机器和 15 至 24 道工序。程序使用 Python 3 和 PyTorch 实现，默认使用 CPU 运行。为了保证可复现性，代码中固定随机种子，并将训练历史、各实例调度表和图像结果全部输出到 `results` 目录。
+
+#### 实验参数设置
+
+| 参数 | 取值 | 含义 |
+|---|---:|---|
+| `--episodes` | 160 | PPO 训练轮数 |
+| `--hidden-dim` | 64 | 神经网络隐藏维度 |
+| `--layers` | 1 | Transformer Encoder 层数 |
+| `--ppo-epochs` | 1 | 每条轨迹重复更新次数 |
+| `--rollouts` | 80 | 每个实例的神经策略 rollout 次数 |
+| `--local-iterations` | 60000 | 每个实例分配给局部精炼的总迭代数 |
+| `--local-starts` | 8 | 参与局部精炼的种子数量 |
+| `--lr` | <Tex tex={String.raw`3\times10^{-4}`} /> | AdamW 学习率 |
+| `--seed` | 1 | 随机种子 |
+
+运行命令如下：
+
+```bash
+python code/drl_fjsp.py --input data/FJSP-test-5.txt \
+  --episodes 160 --rollouts 80 --local-iterations 60000 \
+  --local-starts 8 --seed 1 --outdir results
+```
+
+### 3.2 训练过程
+
+下图为策略训练过程中的 makespan 曲线。由于每个 episode 随机选择不同实例，原始曲线存在波动；移动平均曲线体现了策略在若干训练轮后能够逐渐学习到更合理的动作偏好。
+
+需要注意的是，当前测试集中只有 5 个实例，深度模型训练样本较少，因此训练曲线不能完全单调下降。本文通过 PPO 裁剪、价值函数基线、熵正则和多种子局部精炼来增强稳定性。
+
+![深度强化学习训练曲线](/BLE/images/notes/optimization_method_DL/training_curve.png)
+
+### 3.3 实验结果
+
+下表给出了 5 个测试用例的最终结果。随着工件数量和总工序数增加，求解难度明显上升。最终得到的 makespan 分别为 446、479、554、514 和 635。
+
+#### DRL-Hybrid 在 5 个 FJSP 实例上的结果
+
+| 实例 | 工件数 | 机器数 | 工序数 | Makespan | 运行时间（秒） |
+|---:|---:|---:|---:|---:|---:|
+| 1 | 5 | 7 | 15 | 446 | 2.19 |
+| 2 | 6 | 7 | 18 | 479 | 2.80 |
+| 3 | 7 | 7 | 21 | 554 | 3.22 |
+| 4 | 7 | 7 | 21 | 514 | 3.20 |
+| 5 | 8 | 7 | 24 | 635 | 3.67 |
+
+![5 个实例的 DRL-Hybrid 结果](/BLE/images/notes/optimization_method_DL/results_comparison.png)
+
+Instance 1 和 Instance 4 的结果相对较好，说明在较小或中等规模实例中，神经策略产生的种子可以为局部搜索提供有效起点。Instance 2 和 Instance 5 的结果略逊于模拟退火基线，可能原因是这些实例在机器选择上存在更强的组合耦合，单次小样本训练难以完全学习关键机器瓶颈。
+
+#### Instance 1 的调度甘特图
+
+![Instance 1 的调度甘特图](/BLE/images/notes/optimization_method_DL/gantt_instance1.png)
+
+图中每个条块表示一道工序，标签 <Tex tex={String.raw`J_i.j`} /> 表示工件 <Tex tex={String.raw`i`} /> 的第 <Tex tex={String.raw`j`} /> 道工序。由甘特图可见，算法能够在多台机器之间分配工序，并利用最早空隙插入规则压缩机器空闲时间。
+
+### 3.4 与传统模拟退火版本的对比
+
+为了体现深度学习版本与传统版本的差异，下表比较了前一版模拟退火结果和本文 DRL-Hybrid 结果。整体平均 makespan 从 524.6 变为 525.6，平均差距约为 0.19%。两者在解质量上非常接近。
+
+更重要的是，本文方法在算法结构上引入了状态表示学习、Actor-Critic、PPO 稳定更新和注意力机制，能为更大规模或动态调度问题提供扩展基础。
+
+#### 传统模拟退火与 DRL-Hybrid 结果对比
+
+| 实例 | 模拟退火 Makespan | DRL-Hybrid Makespan | 差值 | 相对差距 |
+|---:|---:|---:|---:|---:|
+| 1 | 448 | 446 | -2 | -0.45% |
+| 2 | 468 | 479 | 11 | 2.35% |
+| 3 | 554 | 554 | 0 | 0.00% |
+| 4 | 519 | 514 | -5 | -0.96% |
+| 5 | 634 | 635 | 1 | 0.16% |
+| **平均** | **524.6** | **525.6** | **1.0** | **0.19%** |
+
+![传统模拟退火与 DRL-Hybrid 的 makespan 对比](/BLE/images/notes/optimization_method_DL/comparison_sa_drl.png)
+
+### 3.5 参数与消融分析
+
+仅使用短训练和无局部精炼时，平均 makespan 明显偏大；加入少量局部精炼后结果显著改善；最终配置使用更长训练、更多 rollout 和多种子局部搜索，平均 makespan 下降到 525.6。
+
+#### 不同参数设置下的结果对比
+
+| 设置 | I1 | I2 | I3 | I4 | I5 | 平均 |
+|---|---:|---:|---:|---:|---:|---:|
+| 短训练 + 无精炼 | 565 | 715 | 745 | 820 | 929 | 754.8 |
+| 短训练 + 少量精炼 | 470 | 530 | 651 | 590 | 680 | 584.2 |
+| 最终配置 | 446 | 479 | 554 | 514 | 635 | 525.6 |
+
+由参数实验可以得出三点结论：
+
+1. **局部精炼对最终解质量影响显著**：神经网络直接构造的解虽然满足约束，但在机器瓶颈协调方面仍可能存在局部缺陷。
+2. **增加 rollout 次数能够提升候选种子多样性**：策略采样可以覆盖更多调度顺序。
+3. **小规模算例不宜使用过大的网络**：训练样本不足时容易过拟合或出现高方差更新。本文选择 1 层 Transformer 和 64 维隐藏向量，在运行时间和结果之间较为平衡。
+
+由此可见，本问题中深度策略提供方向性搜索能力，而局部精炼负责把神经生成的解进一步压缩到高质量区域，两者结合比单独使用神经构造更稳定。
+
+## 4. 总结
+
+本文完成了一版基于深度强化学习的 FJSP 求解程序和实验报告。与传统模拟退火版本相比，该版本的算法难度和算法深度主要体现在四个方面：
+
+1. 将调度构造过程建模为 MDP。
+2. 使用复合动作同时处理工序选择与机器分配。
+3. 采用 Transformer Actor-Critic 网络学习候选动作之间的竞争关系。
+4. 使用 PPO 训练目标和多种子局部精炼提高稳定性。
+
+实验结果表明，该方法在 5 个实例上获得了与传统模拟退火接近的平均 makespan，并在部分实例上取得更优解。
+
+本文方法仍存在以下不足：
+
+1. **训练数据规模有限**：训练数据仅有 5 个实例，深度模型无法充分发挥跨实例泛化优势；若能随机生成更多同分布训练样本，PPO 策略可能更稳定。
+2. **状态表示仍依赖人工特征**：当前特征主要依赖人工归一化指标。未来可以进一步构造真正的异构图结构，将工序节点、机器节点和加工边输入图神经网络。
+3. **局部精炼仍有计算成本**：局部精炼需要一定迭代次数。若追求严格实时调度，可以研究纯策略网络推理或策略蒸馏。
+4. **优化目标较为单一**：当前目标仅考虑 makespan，后续可以扩展到总延期、机器负载均衡、能耗和动态工件到达等多目标或动态 FJSP 场景。
+
+## 参考文献 References
+
+1. Brandimarte, P. “Routing and Scheduling in a Flexible Job Shop by Tabu Search.” *Annals of Operations Research*, 1993, 41(3): 157—183.
+2. Dauzère-Pérès, S., & Paulli, J. “An Integrated Approach for Modeling and Solving the General Multiprocessor Job-Shop Scheduling Problem Using Tabu Search.” *Annals of Operations Research*, 1997, 70: 281—306.
+3. Behnke, D., & Geiger, M. J. *Test Instances for the Flexible Job Shop Scheduling Problem with Work Centers*. Helmut Schmidt University, 2012.
+4. Zhang, C., Song, W., Cao, Z., Zhang, J., Tan, P. S., & Xu, C. “Learning to Dispatch for Job Shop Scheduling via Deep Reinforcement Learning.” *Advances in Neural Information Processing Systems*, 2020, 33: 1621—1632.
+5. Song, W., Chen, X., Li, Q., & Cao, Z. “Flexible Job-Shop Scheduling via Graph Neural Network and Deep Reinforcement Learning.” *IEEE Transactions on Industrial Informatics*, 2023, 19(2): 1600—1610.
+6. Wang, R., Wang, G., Sun, J., Deng, F., & Chen, J. “Flexible Job Shop Scheduling via Dual Attention Network Based Reinforcement Learning.” arXiv:2305.05119, 2023.
+7. Echeverria, I., Murua, M., & Santana, R. “Solving the Flexible Job-Shop Scheduling Problem through an Enhanced Deep Reinforcement Learning Approach.” arXiv:2310.15706, 2023.
+8. Tang, H., et al. “Solving Flexible Job-Shop Scheduling Problem with Heterogeneous Graph Neural Networks and Deep Reinforcement Learning.” *Machines*, 2024, 12(8): 584.
+9. Schulman, J., Wolski, F., Dhariwal, P., Radford, A., & Klimov, O. “Proximal Policy Optimization Algorithms.” arXiv:1707.06347, 2017.
+10. Vaswani, A., Shazeer, N., Parmar, N., Uszkoreit, J., Jones, L., Gomez, A. N., Kaiser, L., & Polosukhin, I. “Attention Is All You Need.” *Advances in Neural Information Processing Systems*, 2017, 30.
+11. Veličković, P., Cucurull, G., Casanova, A., Romero, A., Liò, P., & Bengio, Y. “Graph Attention Networks.” *International Conference on Learning Representations*, 2018.
+12. Sutton, R. S., & Barto, A. G. *Reinforcement Learning: An Introduction*. 2nd ed. Cambridge: MIT Press, 2018.
+13. Mnih, V., Kavukcuoglu, K., Silver, D., et al. “Human-Level Control through Deep Reinforcement Learning.” *Nature*, 2015, 518: 529—533.
+14. Bello, I., Pham, H., Le, Q. V., Norouzi, M., & Bengio, S. “Neural Combinatorial Optimization with Reinforcement Learning.” arXiv:1611.09940, 2017.
+15. Kool, W., van Hoof, H., & Welling, M. “Attention, Learn to Solve Routing Problems!” *International Conference on Learning Representations*, 2019.
