@@ -1,0 +1,248 @@
+---
+title: "柔性作业车间调度问题的模拟退火算法求解"
+summary: "采用 OS/MS 两段式编码、最早可行插入解码和多邻域模拟退火算法求解柔性作业车间调度问题，并在 5 个测试实例上比较不同迭代次数与重启次数下的 makespan 和运行时间。"
+publishedAt: 2026-08-06
+publishedLabel: "2026 年 8 月"
+tags: ["柔性作业车间调度", "模拟退火", "组合优化", "智能制造", "最大完工时间"]
+listingTags: ["优化算法", "生产调度"]
+cover: "/images/notes/optimization_method_SA/cover.png"
+authors:
+  - name: "JaneNSea"
+    role: "作者"
+    avatar: "/avatar.jpg"
+featured: false
+priority: 0
+draft: false
+readingMinutes: 14
+relatedProjects: []
+---
+
+import Tex from '../../components/content/Tex.astro';
+
+## 摘要 Abstract
+
+柔性作业车间调度问题要求在满足工件工序先后约束与机器容量约束的条件下，同时决定每道工序的加工机器与各机器上的加工顺序，并最小化所有工件的最大完工时间。
+
+本文采用传统模拟退火算法求解该问题：用工序序列与机器选择向量共同表示调度方案，通过最早可行插入方式解码得到半主动调度，并使用交换、插入、片段逆序和机器变更四类邻域产生新解。实验在给定的 5 个测试用例上进行，增强参数设置下得到的 makespan 分别为 448、468、554、519 和 634。
+
+结果表明，模拟退火能够在较短时间内得到质量较好的可行调度，但算法结果仍会受到初始解、邻域结构和冷却参数的影响。
+
+**关键词 Keywords**：柔性作业车间调度；模拟退火；组合优化；最大完工时间
+
+> 作者：詹佳鑫（学号：1120242935）
+
+## 1. 引言
+
+柔性作业车间调度问题（Flexible Job-shop Scheduling Problem，FJSP）是经典作业车间调度问题的推广。与普通作业车间调度问题相比，FJSP 中同一道工序可以在多台候选机器上加工，且加工时间随机器不同而不同。因此，算法不仅需要决定工序在机器上的排序，还需要决定工序的机器分配。该问题具有明显的组合爆炸特征，是生产调度和智能制造中的典型 NP-hard 问题。
+
+设工件集合为 <Tex tex={String.raw`J=\{1,2,\ldots,n\}`} />，机器集合为 <Tex tex={String.raw`M=\{0,1,\ldots,m-1\}`} />。工件 <Tex tex={String.raw`i`} /> 包含 <Tex tex={String.raw`n_i`} /> 道工序，记为 <Tex tex={String.raw`O_{i1},O_{i2},\ldots,O_{in_i}`} />。工序 <Tex tex={String.raw`O_{ij}`} /> 的候选机器集合为 <Tex tex={String.raw`A_{ij}\subseteq M`} />；若该工序选择机器 <Tex tex={String.raw`k\in A_{ij}`} />，加工时间为 <Tex tex={String.raw`p_{ijk}`} />。
+
+令 <Tex tex={String.raw`x_{ijk}`} /> 为机器选择变量，<Tex tex={String.raw`s_{ij}`} /> 为工序开始时间，<Tex tex={String.raw`C_{\max}`} /> 为最大完工时间，则优化目标为：
+
+<Tex block tex={String.raw`\min C_{\max}`} />
+
+主要约束如下。
+
+### 1.1 机器选择约束
+
+每道工序必须选择且只能选择一台可行机器：
+
+<Tex block tex={String.raw`\sum_{k\in A_{ij}}x_{ijk}=1,\quad \forall i,j`} />
+
+### 1.2 工序优先约束
+
+同一工件内部的工序必须按给定顺序加工：
+
+<Tex block tex={String.raw`s_{i,j+1}\ge s_{ij}+\sum_{k\in A_{ij}}p_{ijk}x_{ijk},\quad \forall i,\;j=1,\ldots,n_i-1`} />
+
+### 1.3 机器容量约束
+
+同一机器在任意时刻最多加工一道工序。对于两道不同工序 <Tex tex={String.raw`a`} /> 与 <Tex tex={String.raw`b`} />，若它们都分配到机器 <Tex tex={String.raw`k`} />，则需满足二者不重叠。用二元变量 <Tex tex={String.raw`y_{abk}`} /> 表示先后关系，可写为：
+
+<Tex block tex={String.raw`\begin{aligned}
+s_a+p_{ak} &\le s_b + H(1-y_{abk}) + H(2-x_{ak}-x_{bk}),\\
+s_b+p_{bk} &\le s_a + Hy_{abk} + H(2-x_{ak}-x_{bk}).
+\end{aligned}`} />
+
+其中，<Tex tex={String.raw`H`} /> 为足够大的常数。
+
+### 1.4 最大完工时间约束
+
+<Tex block tex={String.raw`C_{\max}\ge s_{ij}+\sum_{k\in A_{ij}}p_{ijk}x_{ijk},\quad \forall i,j`} />
+
+本文后续部分组织如下：第 2 节介绍模拟退火算法设计，第 3 节给出实验设置与结果分析，第 4 节总结全文。
+
+## 2. 算法设计
+
+### 2.1 编码与解码
+
+本文采用两段式编码。
+
+- **工序序列（Operation Sequence，OS）**：工件编号 <Tex tex={String.raw`i`} /> 出现 <Tex tex={String.raw`n_i`} /> 次，第 <Tex tex={String.raw`r`} /> 次出现代表工件 <Tex tex={String.raw`i`} /> 的第 <Tex tex={String.raw`r`} /> 道工序。
+- **机器选择向量（Machine Selection，MS）**：按照工件和工序顺序记录每道工序选用的机器。
+
+给定 OS/MS 后，解码器从左到右扫描 OS。每读到一个工件编号，就取该工件尚未安排的最早一道工序，并根据 MS 中记录的机器进行排产。
+
+工序的开始时间取为同时满足工件完工约束和机器空闲约束的最早时刻。若机器已有加工区间，则在已有区间之间寻找可插入的最早空隙；若不存在空隙，则排在该机器已有任务之后。该解码策略能够保证生成可行调度。
+
+### 2.2 邻域结构与接受准则
+
+设当前解的目标函数值为 <Tex tex={String.raw`f(S)`} />。每次迭代随机选择以下四类邻域之一生成候选解 <Tex tex={String.raw`S'`} />：
+
+1. **交换**：随机交换 OS 中两个位置的工件编号。
+2. **插入**：随机取出 OS 中一个位置并插入到另一个位置。
+3. **逆序**：随机选取 OS 中一段连续片段并反转。
+4. **机器变更**：随机选择一道工序，将其机器改为另一台候选机器；搜索后期以一定概率偏向加工时间较短的候选机器。
+
+若 <Tex tex={String.raw`f(S')\le f(S)`} />，则直接接受候选解；若 <Tex tex={String.raw`f(S')>f(S)`} />，则按 Metropolis 准则以如下概率接受候选解：
+
+<Tex block tex={String.raw`P=\exp\left(-\frac{f(S')-f(S)}{T}\right)`} />
+
+温度按几何方式下降：
+
+<Tex block tex={String.raw`T_t=T_{\min}+(T_0-T_{\min})\alpha^t`} />
+
+其中，<Tex tex={String.raw`\alpha=0.995`} />。初始温度 <Tex tex={String.raw`T_0`} /> 根据若干随机扰动产生的平均上坡差值进行估计，使搜索初期能够接受一定比例的劣解，从而跳出局部最优。
+
+#### 模拟退火算法流程
+
+**开始 → 读取实例并生成初始解 → 解码并计算 makespan → 随机邻域生成候选解 → 判断是否接受候选解 → 更新当前解与最优解 → 判断是否达到终止条件**
+
+- 若达到终止条件：输出最优调度。
+- 若未达到终止条件：返回“随机邻域生成候选解”步骤继续迭代。
+- 候选解优于当前解时直接接受；否则按 Metropolis 概率接受。
+
+### 2.3 算法伪代码
+
+```text
+算法：FJSP 的模拟退火算法
+
+输入：FJSP 实例、迭代次数 L、重启次数 R、冷却系数 α
+输出：最优 makespan 及对应调度方案
+
+1.  S* ← ∅，f* ← +∞
+2.  for r = 1 to R do
+3.      随机生成 OS/MS 初始解 S
+4.      解码 S 并计算 f(S)，估计初始温度 T₀
+5.      for t = 1 to L do
+6.          通过邻域操作生成 S'
+7.          解码 S' 并计算 f(S')
+8.          if f(S') ≤ f(S)
+                或 rand(0,1) < exp(-(f(S')-f(S))/Tₜ) then
+9.              S ← S'
+10.         end if
+11.         if f(S) < f* then
+12.             S* ← S，f* ← f(S)
+13.         end if
+14.         Tₜ ← T_min + (T₀ - T_min) αᵗ
+15.     end for
+16.     对 S* 执行一次机器选择局部改进
+17. end for
+18. return S*, f*
+```
+
+### 2.4 复杂度分析
+
+设总工序数为 <Tex tex={String.raw`N=\sum_i n_i`} />，机器数为 <Tex tex={String.raw`m`} />，每道工序平均候选机器数为 <Tex tex={String.raw`q`} />。
+
+一次邻域扰动的时间复杂度为 <Tex tex={String.raw`O(N)`} /> 或 <Tex tex={String.raw`O(1)`} />。解码时，每道工序需要在相应机器的已排任务表中寻找最早可行空隙；采用顺序扫描时，最坏时间复杂度为 <Tex tex={String.raw`O(N^2)`} />，空间复杂度为 <Tex tex={String.raw`O(N+m)`} />。
+
+若每次重启迭代 <Tex tex={String.raw`L`} /> 次、共重启 <Tex tex={String.raw`R`} /> 次，则主循环最坏时间复杂度为：
+
+<Tex block tex={String.raw`O(RLN^2)`} />
+
+机器选择局部改进最多扫描 <Tex tex={String.raw`Nq`} /> 个机器替换方案，每个方案需要一次解码，因此单轮复杂度为：
+
+<Tex block tex={String.raw`O(Nq\cdot N^2)`} />
+
+在本次测试规模下，<Tex tex={String.raw`N`} /> 较小，因此该传统实现可以在可接受时间内运行。
+
+## 3. 实验
+
+### 3.1 实验设置
+
+实验数据来自给定测试文件，共 5 个 FJSP 实例，机器数均为 7，工件数从 5 增加到 8。程序使用 Python 3 编写，不依赖第三方优化库。
+
+为了减小随机性的影响，实验采用多次重启策略，并固定随机种子以保证结果可复现。运行命令如下：
+
+```bash
+python code/sa_fjsp.py --input data/FJSP-test-5.txt \
+    --iterations 20000 --restarts 20 --seed 1 --outdir results
+```
+
+#### 模拟退火参数设置
+
+| 参数 | 取值 | 说明 |
+|---|---|---|
+| 编码方式 | OS + MS | 工序序列与机器选择向量 |
+| 初始解 | 随机 OS + 贪心/随机 MS | 贪心率在 0.65—0.95 之间随机取值 |
+| 邻域操作 | 交换、插入、逆序、机器变更 | 按固定概率随机选择 |
+| 冷却系数 α | 0.995 | 几何降温 |
+| 迭代次数 | 20000 | 每次重启的迭代次数 |
+| 重启次数 | 20 | 独立模拟退火运行次数 |
+| 随机种子 | 1 | 保证实验可复现 |
+
+### 3.2 实验结果
+
+下表给出了 5 个实例的运行结果。运行时间为本机一次运行得到的时间，仅作为复现实验时的参考。
+
+可以看到，随着实例规模增加，运行时间逐渐上升；但由于实例 5 的候选机器组合提供了更多灵活性，其 makespan 并不一定符合由较小规模实例推导出的简单线性趋势。
+
+#### 增强参数设置下的运行结果
+
+| 实例 | 工件数 | Makespan | 运行时间（秒） |
+|---:|---:|---:|---:|
+| 1 | 5 | 448 | 7.977 |
+| 2 | 6 | 468 | 9.380 |
+| 3 | 7 | 554 | 11.164 |
+| 4 | 7 | 519 | 11.307 |
+| 5 | 8 | 634 | 13.090 |
+
+#### 实例 1 的调度甘特图
+
+![实例 1 的调度甘特图](/images/notes/optimization_method_SA/gantt_instance1.png)
+
+图中每个条块表示一道工序，条块位置对应其开始和结束时间。该结果的最大完工时间为 448，说明算法在该实例上能够形成较紧凑的机器加工序列。
+
+#### 实例 1 的收敛曲线
+
+![实例 1 的收敛曲线](/images/notes/optimization_method_SA/convergence_instance1.png)
+
+搜索初期最优值下降较快，说明交换和插入邻域可以快速改善工序排序；搜索后期下降趋缓，主要依赖机器变更和偶然接受劣解来进一步跳出局部最优。
+
+### 3.3 参数对比分析
+
+为了分析迭代次数与重启次数的影响，本文设计了三组参数对比实验。快速设置用于获得可行解，标准设置兼顾速度与质量，增强设置用于争取更好的 makespan。
+
+#### 不同参数设置的对比结果
+
+| 设置 | 迭代次数 | 重启次数 | 实例 1 | 实例 2 | 实例 3 | 实例 4 | 实例 5 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 快速 | 4000 | 4 | 461 | 488 | 581 | 573 | 712 |
+| 标准 | 8000 | 8 | 461 | 469 | 554 | 519 | 647 |
+| 增强 | 20000 | 20 | 448 | 468 | 554 | 519 | 634 |
+
+增加迭代次数和重启次数能够明显提升解质量，尤其对实例 5 的改善较大。标准设置相对快速设置已经能显著降低 makespan；增强设置继续改善实例 1、2 和 5，但对实例 3、4 的提升有限，说明在这些实例上当前邻域结构可能已经较早进入局部最优。
+
+若希望进一步提升结果，可以考虑引入关键路径邻域、基于瓶颈机器的定向扰动或更精细的温度自适应策略。
+
+## 4. 总结
+
+本文针对柔性作业车间调度问题设计了传统模拟退火算法。算法采用 OS/MS 两段式编码，通过最早可行插入解码生成调度，并利用交换、插入、逆序和机器变更四类邻域在解空间中搜索。
+
+实验结果表明，该方法能够在给定 5 个实例上稳定生成可行解，并在增强参数下取得较好的 makespan。
+
+本文方法仍存在以下不足：
+
+1. **邻域利用不足**：邻域操作主要是随机扰动，未充分利用关键路径、瓶颈机器等调度结构信息。
+2. **温度自适应能力有限**：温度参数采用固定冷却系数，面对不同规模实例时适应性不足。
+3. **解码策略仍可扩展**：当前解码器虽能生成可行半主动调度，但尚未引入更复杂的主动调度生成机制。
+
+后续可在保持模拟退火框架的基础上，加入关键工序移动、机器负载均衡初始化和多种邻域自适应选择策略，以进一步提高求解质量。
+
+## 参考文献 References
+
+1. Kirkpatrick, S., Gelatt, C. D., & Vecchi, M. P. “Optimization by Simulated Annealing.” *Science*, 1983, 220(4598): 671—680.
+2. Brandimarte, P. “Routing and Scheduling in a Flexible Job Shop by Tabu Search.” *Annals of Operations Research*, 1993, 41(3): 157—183.
+3. Kacem, I., Hammadi, S., & Borne, P. “Approach by Localization and Multiobjective Evolutionary Optimization for Flexible Job-Shop Scheduling Problems.” *IEEE Transactions on Systems, Man, and Cybernetics, Part C*, 2002, 32(1): 1—13.
+4. 李冬妮，肖广雪，王妍，等：《一种柔性路径下的跨单元调度方法》，《自动化学报》，2012，38(6)：969—975。
