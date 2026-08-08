@@ -4,7 +4,7 @@ summary: "解释把 C 模块真正加入 µVision 工程需要完成的两件事
 publishedAt: 2025-09-01
 publishedLabel: "2025 年 9 月"
 tags: ["Keil µVision", "Embedded C", "STM32", "Build System"]
-listingTags: ["嵌入式", "C"]
+listingTags: ["嵌入式"]
 cover: "/images/notes/keil5-build-detail.jpg"
 authors:
   - name: "JaneNSea"
